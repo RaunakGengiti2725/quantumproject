@@ -27,6 +27,31 @@ class BulkTree:
             {(v, u): i for (u, v), i in self.edge_to_index.items()}
         )
 
+    def compute_curvatures(self, weights: List[float]) -> dict[int, float]:
+        """Return curvature proxy at each node from edge weights."""
+        curvatures = {}
+        for v in self.tree.nodes:
+            if self.tree.degree[v] > 1:
+                edges = [self.edge_to_index[(v, nbr)] for nbr in self.tree.neighbors(v)]
+                curvatures[v] = -float(sum(weights[e] for e in edges))
+            else:
+                curvatures[v] = 0.0
+        return curvatures
+
+    def leaf_descendants(self) -> dict[int, List[int]]:
+        """Mapping from node to boundary qubits in its subtree."""
+        rooted = nx.bfs_tree(self.tree, source=0)
+
+        def collect(node):
+            if node in self.leaf_to_qubit:
+                return [self.leaf_to_qubit[node]]
+            leaves = []
+            for child in rooted.successors(node):
+                leaves += collect(child)
+            return leaves
+
+        return {node: collect(node) for node in rooted.nodes}
+
     @lru_cache(maxsize=None)
     def interval_cut_edges(self, interval: Tuple[int, ...]) -> List[int]:
         qubits = list(interval)

@@ -19,6 +19,11 @@ The script saves learned edge weights in `runs/demo/` and writes TensorBoard log
 ```bash
 tensorboard --logdir runs/demo
 ```
+To generate publication-ready figures after running experiments:
+```bash
+python generate_figures.py --n_qubits 8 --hamiltonian tfim --steps 5 --t_max 3.14
+```
+Outputs are saved in `figures/` as PNG and PDF.
 
 ## Theory
 A quenched spin chain develops entanglement across contiguous intervals. A graph neural network learns edge weights on a binary bulk tree so that minimal cuts reproduce these entropies. The resulting curvature correlates with boundary energy shifts, inspired by AdS/CFT intuition.
