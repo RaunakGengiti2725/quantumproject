@@ -19,7 +19,6 @@ The script saves learned edge weights in `runs/demo/` and writes TensorBoard log
 ```bash
 tensorboard --logdir runs/demo
 ```
-
 To generate publication-ready figures after running experiments:
 ```bash
 python generate_figures.py --n_qubits 8 --hamiltonian tfim --steps 5 --t_max 3.14

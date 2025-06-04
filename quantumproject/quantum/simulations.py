@@ -65,16 +65,15 @@ def von_neumann_entropy(state: Sequence[complex], subsys: Iterable[int]) -> floa
     evs = qml.math.eigvalsh(rho)
     evs = pnp.clip(evs, 1e-9, 1)
     return float(-pnp.sum(evs * pnp.log(evs)))
-
-
+  
 def z_expectation(state: Sequence[complex], wire: int) -> float:
     """Expectation value of Z on given qubit from state vector."""
     rho = reduced_density_matrix(state, [wire])
     z = pnp.array([[1, 0], [0, -1]], dtype=complex)
     return float(pnp.trace(rho @ z).real)
 
-
 def boundary_energy_delta(state_base: Sequence[complex], state_t: Sequence[complex]) -> list[float]:
     """Return ΔE_i = <Z_i>(t) - <Z_i>(0) for each qubit."""
     n = int(np.log2(len(state_base)))
     return [z_expectation(state_t, i) - z_expectation(state_base, i) for i in range(n)]
+
