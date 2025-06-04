@@ -4,3 +4,5 @@ networkx
 matplotlib
 pennylane
 scipy
+dgl
+tensorboard
