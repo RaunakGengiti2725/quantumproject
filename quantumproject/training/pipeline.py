@@ -39,8 +39,16 @@ def train_step(ent_torch: torch.Tensor, tree: BulkTree, writer=None, steps: int 
 
     n_qubits = tree.n_qubits
 
-    # 1. Compute all contiguous intervals for n_qubits
-    intervals = contiguous_intervals(n_qubits)  # list of tuples, e.g. [(0,), (0,1), (1,), …]
+    # 1. Compute all contiguous intervals for n_qubits. If ent_torch supplies
+    #    fewer values than the number of intervals, slice to match so the
+    #    network input dimension agrees with the provided entropies.  This keeps
+    #    the function usable with toy data in tests where only single-qubit
+    #    entropies are given.
+    all_intervals = contiguous_intervals(n_qubits)
+    if ent_torch.ndim == 1 and ent_torch.shape[0] != len(all_intervals):
+        intervals = all_intervals[: ent_torch.shape[0]]
+    else:
+        intervals = all_intervals
 
     n_intervals = len(intervals)
     n_edges = len(tree.edge_list)
