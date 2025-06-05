@@ -1,70 +1,150 @@
-"""Bulk tree utilities."""
-
-from __future__ import annotations
-
-from functools import lru_cache
-from typing import List, Tuple
-
-import math
 import networkx as nx
+from collections import deque
 
 
 class BulkTree:
+    """
+    A balanced binary tree whose leaves correspond one-to-one with qubits.
+    Provides utilities for interval edge cuts, leaf descendants, and curvatures.
+    """
+
     def __init__(self, n_qubits: int):
-        self.tree = nx.balanced_tree(r=2, h=int(math.log2(n_qubits)))
-        leaves = sorted(
-            [
-                node
-                for node in self.tree.nodes
-                if self.tree.degree[node] == 1 and node != 0
-            ]
-        )
-        assert len(leaves) == n_qubits
-        self.leaf_to_qubit = {leaf: idx for idx, leaf in enumerate(leaves)}
+        self.n_qubits = n_qubits
+        self.tree = nx.Graph()
+        self.leaf_nodes_list = []           # Will store names of leaves: "q0", "q1", ...
+        self._build_balanced_binary_tree()  # Build the tree and populate leaf_nodes_list
+        # Now expose the list of edges in a plain attribute (for GNN usage)
         self.edge_list = list(self.tree.edges)
-        self.edge_to_index = {e: i for i, e in enumerate(self.edge_list)}
-        self.edge_to_index.update(
-            {(v, u): i for (u, v), i in self.edge_to_index.items()}
+
+    def _build_balanced_binary_tree(self):
+        """
+        Recursively builds a binary tree with exactly self.n_qubits leaves.
+        Leaves are named "q0", "q1", ..., "q{n_qubits-1}".
+        Internal nodes are named "v0", "v1", etc.
+        """
+
+        counter = {"leaf_idx": 0, "internal_idx": 0}
+
+        def build_subtree(leaf_count: int):
+            # Base case: exactly 1 leaf → create it, name "q{leaf_idx}"
+            if leaf_count == 1:
+                leaf_name = f"q{counter['leaf_idx']}"
+                counter["leaf_idx"] += 1
+                self.tree.add_node(leaf_name)
+                self.leaf_nodes_list.append(leaf_name)
+                return leaf_name
+
+            # Otherwise split into two subtrees
+            left_count = leaf_count // 2
+            right_count = leaf_count - left_count
+
+            left_child = build_subtree(left_count)
+            right_child = build_subtree(right_count)
+
+            internal_node = f"v{counter['internal_idx']}"
+            counter["internal_idx"] += 1
+            self.tree.add_node(internal_node)
+            self.tree.add_edge(internal_node, left_child)
+            self.tree.add_edge(internal_node, right_child)
+            return internal_node
+
+        # Build the entire tree
+        build_subtree(self.n_qubits)
+
+        # Verify correct number of leaves
+        assert len(self.leaf_nodes_list) == self.n_qubits, (
+            f"Expected {self.n_qubits} leaves, got {len(self.leaf_nodes_list)}"
         )
 
-    def compute_curvatures(self, weights: List[float]) -> dict[int, float]:
-        """Return curvature proxy at each node from edge weights."""
-        curvatures = {}
-        for v in self.tree.nodes:
-            if self.tree.degree[v] > 1:
-                edges = [self.edge_to_index[(v, nbr)] for nbr in self.tree.neighbors(v)]
-                curvatures[v] = -float(sum(weights[e] for e in edges))
-            else:
-                curvatures[v] = 0.0
-        return curvatures
+    def leaf_nodes(self) -> list[str]:
+        """
+        Returns a list of all leaf-node names, i.e. nodes of degree 1 named "q*".
+        """
+        return list(self.leaf_nodes_list)
 
-    def leaf_descendants(self) -> dict[int, List[int]]:
-        """Mapping from node to boundary qubits in its subtree."""
-        rooted = nx.bfs_tree(self.tree, source=0)
+    def leaf_descendants(self) -> dict[str, list[str]]:
+        """
+        For each internal (non-leaf) node, return the list of leaf-node names reachable from it.
+        Only includes nodes whose degree > 1.
+        """
+        descendants = {}
+        all_leaves = set(self.leaf_nodes_list)
 
-        def collect(node):
-            if node in self.leaf_to_qubit:
-                return [self.leaf_to_qubit[node]]
-            leaves = []
-            for child in rooted.successors(node):
-                leaves += collect(child)
-            return leaves
+        for node in self.tree.nodes:
+            # Skip actual leaves
+            if self.tree.degree[node] == 1 and node in all_leaves:
+                continue
 
-        return {node: collect(node) for node in rooted.nodes}
+            visited = {node}
+            queue = deque([node])
+            node_leaves = []
 
-    @lru_cache(maxsize=None)
-    def interval_cut_edges(self, interval: Tuple[int, ...]) -> List[int]:
-        qubits = list(interval)
-        region_leaves = [leaf for leaf, q in self.leaf_to_qubit.items() if q in qubits]
-        outside_leaves = [
-            leaf for leaf, q in self.leaf_to_qubit.items() if q not in qubits
-        ]
-        min_cut = float("inf")
-        best_edges = None
-        for u in region_leaves:
-            for v in outside_leaves:
-                cut_edges = nx.minimum_edge_cut(self.tree, u, v)
-                if len(cut_edges) < min_cut:
-                    min_cut = len(cut_edges)
-                    best_edges = cut_edges
-        return [self.edge_to_index[(u, v)] for (u, v) in best_edges]
+            while queue:
+                curr = queue.popleft()
+                for nbr in self.tree.neighbors(curr):
+                    if nbr in visited:
+                        continue
+                    visited.add(nbr)
+                    if nbr in all_leaves:
+                        node_leaves.append(nbr)
+                    else:
+                        queue.append(nbr)
+
+            descendants[node] = node_leaves
+
+        return descendants
+
+    def compute_curvatures(self, weights: list[float]) -> dict[str, float]:
+        """
+        Placeholder: assign each node a "curvature" based on the provided weights list.
+        Replace this stub with actual curvature logic as needed.
+        """
+        curvature = {}
+        nodes = list(self.tree.nodes)
+        for i, node in enumerate(nodes):
+            curvature[node] = weights[i % len(weights)]
+        return curvature
+
+    def interval_cut_edges(self, interval: tuple[int, ...]) -> list[tuple[str, str]]:
+        """
+        Given an interval of qubit indices (e.g. (2,) or (3,4)), find all edges whose removal
+        separates exactly that set of leaves from the rest of the tree.
+
+        - `interval`: a tuple of contiguous qubit indices (0-based).
+                      Example: (0,) isolates leaf "q0"; (2,3) isolates leaves "q2" and "q3".
+        - Returns: list of edge tuples (u, v). Removing any of these edges will isolate that interval.
+        """
+        # Convert qubit indices → leaf names
+        target_leaves = {f"q{i}" for i in interval}
+
+        # Special case: single‐leaf interval → return that leaf’s unique connecting edge
+        if len(target_leaves) == 1:
+            leaf = next(iter(target_leaves))
+            if leaf not in self.tree:
+                raise ValueError(f"Leaf {leaf} not found in tree.")
+            neighbors = list(self.tree.neighbors(leaf))
+            if not neighbors:
+                raise ValueError(f"Leaf {leaf} has no connecting edge.")
+            return [(leaf, neighbors[0])]
+
+        # General case: interval length ≥ 2
+        valid_edges = []
+        for u, v in list(self.tree.edges):
+            # Temporarily remove this edge
+            self.tree.remove_edge(u, v)
+            components = list(nx.connected_components(self.tree))
+            # Re-add the edge
+            self.tree.add_edge(u, v)
+
+            if len(components) != 2:
+                continue
+
+            c1, c2 = components
+            if target_leaves.issubset(c1) and target_leaves.isdisjoint(c2):
+                valid_edges.append((u, v))
+            elif target_leaves.issubset(c2) and target_leaves.isdisjoint(c1):
+                valid_edges.append((u, v))
+
+        if not valid_edges:
+            raise ValueError(f"No valid edge cut found for interval {interval}")
+        return valid_edges
