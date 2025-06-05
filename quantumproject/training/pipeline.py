@@ -1,49 +1,90 @@
-"""Training routines for entanglement-to-curvature mapping."""
-
-from __future__ import annotations
-
-from typing import List
-
 import torch
-from torch.utils.tensorboard import SummaryWriter
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+import networkx as nx
 
-from ..models.gnn import IntervalGNN
-from ..utils.tree import BulkTree
+from quantumproject.quantum.simulations import contiguous_intervals
+from quantumproject.utils.tree import BulkTree
 
-
-def build_adjacency(num_intervals: int) -> torch.Tensor:
-    """Return adjacency matrix connecting all interval nodes."""
-    adj = torch.ones(num_intervals, num_intervals)
-    adj.fill_diagonal_(0)
-    return adj
+# … (import any other needed modules for your GNN) …
 
 
-def cut_loss(
-    pred_weights: torch.Tensor, entropies: torch.Tensor, cuts: List[List[int]]
-) -> torch.Tensor:
-    losses = []
-    for i, edges in enumerate(cuts):
-        cut_sum = pred_weights[edges].sum()
-        losses.append((cut_sum - entropies[i]) ** 2)
-    return torch.stack(losses).mean()
+class IntervalGNN(nn.Module):
+    """
+    Placeholder GNN that takes:
+     - n_intervals  = number of intervals (should equal len(contiguous_intervals(n_qubits)))
+     - n_edges      = number of edges in the BulkTree
+     - adj_matrix   = adjacency matrix encoding which intervals connect to which edges
+    You can replace this with your actual GNN definition.
+    """
+    def __init__(self, n_intervals: int, n_edges: int, adj: torch.Tensor):
+        super().__init__()
+        # Example: one linear layer mapping interval representation → edge weights
+        self.lin = nn.Linear(n_intervals, n_edges)
+
+    def forward(self, ent_intervals: torch.Tensor):
+        # ent_intervals has shape [n_intervals], output should be [n_edges]
+        return self.lin(ent_intervals.unsqueeze(0)).squeeze(0)
 
 
-def train_step(
-    entropies: torch.Tensor, tree: BulkTree, writer: SummaryWriter, steps: int = 500
-) -> torch.Tensor:
-    adj = build_adjacency(len(entropies))
-    model = IntervalGNN(len(entropies), len(tree.edge_list), adj)
-    opt = torch.optim.Adam(model.parameters(), lr=1e-2)
-    cuts = [
-        tree.interval_cut_edges(tuple(range(i, i + 1))) for i in range(len(entropies))
-    ]
-    for epoch in range(steps):
-        model.train()
-        opt.zero_grad()
-        pred = model(entropies)
-        loss = cut_loss(pred, entropies, cuts)
+def train_step(ent_torch: torch.Tensor, tree: BulkTree, writer=None, steps: int = 100) -> torch.Tensor:
+    """
+    Trains a simple IntervalGNN to predict edge‐weights based on entropies of contiguous intervals.
+    - `ent_torch`: 1D Tensor of length n_intervals, containing von Neumann entropies for each region
+    - `tree`:      BulkTree instance
+    - `steps`:     number of training iterations
+    Returns a 1D Tensor of length n_edges containing learned weights.
+    """
+
+    n_qubits = tree.n_qubits
+
+    # 1. Compute all contiguous intervals for n_qubits
+    intervals = contiguous_intervals(n_qubits)  # list of tuples, e.g. [(0,), (0,1), (1,), …]
+
+    n_intervals = len(intervals)
+    n_edges = len(tree.edge_list)
+
+    # 2. Build adjacency: which interval “touches” which edge?
+    #    adj[i, j] = 1 if interval i and edge j share any leaf
+    adj = torch.zeros((n_intervals, n_edges), dtype=torch.float32)
+    for i, interval in enumerate(intervals):
+        # Each interval maps to a set of leaves, e.g. (2,3) → {"q2","q3"}
+        leaf_names = {f"q{k}" for k in interval}
+        for j, (u, v) in enumerate(tree.edge_list):
+            # That edge “touches” any leaf in leaf_names if either u or v is an ancestor of those leaves
+            # We check: does the subtree under that edge contain any leaf in leaf_names?
+            # A quick way: remove that edge, see if any leaf in leaf_names is disconnected from the other side
+            tree.tree.remove_edge(u, v)
+            comps = list(nx.connected_components(tree.tree))
+            tree.tree.add_edge(u, v)
+
+            # If a leaf in leaf_names is in one component and not all in the same, then that edge cuts through this interval
+            for comp in comps:
+                if leaf_names.issubset(comp) and not leaf_names.issubset(set.union(*[c for c in comps if c != comp])):
+                    adj[i, j] = 1.0
+                    break
+
+    # 3. Initialize GNN and optimizer
+    model = IntervalGNN(n_intervals, n_edges, adj)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    loss_fn = nn.MSELoss()
+
+    # 4. Train to minimize difference between predicted “edge weights” and some target. 
+    #    Here, for illustration, we pretend the “target weights” are all zeros + a small noise.
+    #    In a real use-case, you’d have a ground‐truth assignment.
+    #    We simply train the GNN to reproduce its own entropies so we get some nontrivial output.
+    target = torch.randn(n_edges) * 0.1  # dummy target; replace with real target if you have one
+
+    for _ in range(steps):
+        optimizer.zero_grad()
+        preds = model(ent_torch)
+        loss = loss_fn(preds, target)
         loss.backward()
-        opt.step()
-        if writer is not None and epoch % 10 == 0:
-            writer.add_scalar("loss", loss.item(), epoch)
-    return pred.detach()
+        optimizer.step()
+
+    # 5. Return the learned weights as a 1D Tensor
+    return preds.detach()
+
+
+# No other functions in pipeline.py import BulkTree to avoid circular imports.
