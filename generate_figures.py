@@ -3,6 +3,13 @@ import argparse
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+plt.style.use("seaborn-v0_8-whitegrid")
+plt.rcParams.update({
+    "font.family": "serif",
+    "font.size": 11,
+    "figure.dpi": 300,
+    "savefig.dpi": 300,
+})
 from scipy.stats import pearsonr, spearmanr, zscore
 
 from quantumproject.quantum.simulations import (
@@ -100,7 +107,7 @@ def main() -> None:
             pearson_corrs.append(r_pearson)
             spearman_corrs.append(r_spearman)
 
-            plt.figure(figsize=(5, 4), dpi=150)
+            plt.figure(figsize=(5, 4), dpi=300)
             plt.scatter(x_vals, y_vals, c=y_vals, cmap="viridis", alpha=0.8, edgecolors="k")
             plt.xlabel("Curvature", fontsize=12, fontweight='bold')
             plt.ylabel("ΔE sum", fontsize=12, fontweight='bold')
@@ -114,7 +121,7 @@ def main() -> None:
             pearson_corrs.append(0.0)
             spearman_corrs.append(0.0)
 
-            plt.figure(figsize=(5, 4), dpi=150)
+            plt.figure(figsize=(5, 4), dpi=300)
             plt.text(0.5, 0.5, "Flat Data", ha="center", va="center", fontsize=12, color="gray")
             plt.xlabel("Curvature", fontsize=12, fontweight='bold')
             plt.ylabel("ΔE sum", fontsize=12, fontweight='bold')
@@ -127,7 +134,7 @@ def main() -> None:
     all_dE = np.stack(all_dE)
     np.save(os.path.join(args.outdir, "all_dE_series.npy"), all_dE)
 
-    plt.figure(figsize=(8, 4), dpi=150)
+    plt.figure(figsize=(8, 4), dpi=300)
     plt.imshow(
         all_dE.T,
         aspect="auto",
@@ -143,7 +150,7 @@ def main() -> None:
     plt.savefig(os.path.join(args.outdir, "delta_E_heatmap.png"))
     plt.close()
 
-    plt.figure(figsize=(8, 5), dpi=150)
+    plt.figure(figsize=(8, 5), dpi=300)
     plt.plot(times, pearson_corrs, marker="o", linestyle="--", linewidth=2, label="Pearson", color="#1f77b4")
     plt.plot(times, spearman_corrs, marker="s", linestyle="-", linewidth=2, label="Spearman", color="#ff7f0e")
     plt.axhline(0, color="gray", linestyle=":", linewidth=0.8)
