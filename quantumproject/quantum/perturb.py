@@ -135,3 +135,4 @@ def perturb_time_series(
         "delta_curvature": delta_curv,
         "delta_energy": delta_energy,
     }
+

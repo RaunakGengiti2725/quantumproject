@@ -5,6 +5,7 @@ import networkx as nx
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 from collections import deque
 
+
 plt.style.use("seaborn-v0_8-whitegrid")
 plt.rcParams.update(
     {
@@ -193,7 +194,9 @@ def plot_bulk_tree_3d(
     mid_z = (zs.max() + zs.min()) / 2
 
     # Increase padding so the 3D view is "zoomed out" a bit more
+
     half = max_range / 2 * 2.5  # 150% padding for ample space
+
     ax.set_xlim(mid_x - half, mid_x + half)
     ax.set_ylim(mid_y - half, mid_y + half)
     ax.set_zlim(mid_z - half, mid_z + half)
