@@ -1,1 +1,3 @@
-__all__ = ['invertibility']
+
+__all__ = ['invertibility', 'geodesic', 'scaling']
+

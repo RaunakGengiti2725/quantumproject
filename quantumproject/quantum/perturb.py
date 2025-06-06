@@ -82,3 +82,57 @@ def perturb_and_compare(
         "corr_before": corr_before,
         "corr_after": corr_after,
     }
+
+def perturb_time_series(
+    n_qubits: int,
+    hamiltonian: str,
+    qubits: Iterable[int],
+    times: Iterable[float],
+    angle: float = 0.1,
+    kind: str = "z",
+) -> dict[str, np.ndarray]:
+    """Track perturbation effects across multiple time steps."""
+    sim = Simulator(n_qubits)
+    H = sim.build_hamiltonian(hamiltonian)
+    tree = BulkTree(n_qubits)
+    intervals = contiguous_intervals(n_qubits)
+
+    base_state0 = sim.time_evolved_state(H, 0.0)
+    base_series = []
+    pert_series = []
+    for t in times:
+        state_t = sim.time_evolved_state(H, t)
+        ent_base = np.array([von_neumann_entropy(state_t, r) for r in intervals])
+        weights_base = train_step(torch.tensor(ent_base, dtype=torch.float32), tree, steps=50)
+        curv_base = tree.compute_curvatures(weights_base.numpy())
+        dE_base = boundary_energy_delta(base_state0, state_t)
+        base_series.append((ent_base, curv_base, dE_base))
+
+        dev = qml.device("default.qubit", wires=n_qubits, shots=None)
+
+        @qml.qnode(dev)
+        def pert():
+            _apply_perturbation(dev, qubits, angle, kind)
+            qml.templates.ApproxTimeEvolution(H, t, 1)
+            return qml.state()
+
+        stp = pert()
+        ent_pert = np.array([von_neumann_entropy(stp, r) for r in intervals])
+        w_pert = train_step(torch.tensor(ent_pert, dtype=torch.float32), tree, steps=50)
+        curv_pert = tree.compute_curvatures(w_pert.numpy())
+        dE_pert = boundary_energy_delta(base_state0, stp)
+        pert_series.append((ent_pert, curv_pert, dE_pert))
+
+    delta_entropy = np.stack([p[0] - b[0] for b, p in zip(base_series, pert_series)])
+    delta_energy = np.stack([np.array(p[2]) - np.array(b[2]) for b, p in zip(base_series, pert_series)])
+    delta_curv = np.stack([
+        np.array([p[1][k] - b[1][k] for k in b[1]])
+        for b, p in zip(base_series, pert_series)
+    ])
+
+    return {
+        "delta_entropy": delta_entropy,
+        "delta_curvature": delta_curv,
+        "delta_energy": delta_energy,
+    }
+

@@ -25,3 +25,13 @@ def compare_entropies(true_ent: np.ndarray, recon_ent: np.ndarray) -> dict[str, 
     corr = float(np.corrcoef(true_ent, recon_ent)[0, 1])
     return {"rmse": rmse, "cosine": cos_sim, "corr": corr}
 
+def entropy_round_trip(
+    tree: BulkTree,
+    weights: Iterable[float],
+    true_ent: np.ndarray,
+    intervals: Iterable[tuple[int, ...]],
+) -> dict[str, float]:
+    """Reconstruct entropies from weights and compare to ground truth."""
+    recon = reconstruct_entropies(tree, weights, intervals)
+    metrics = compare_entropies(true_ent, recon)
+    return metrics
