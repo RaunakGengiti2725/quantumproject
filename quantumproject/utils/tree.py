@@ -15,6 +15,9 @@ class BulkTree:
         self._build_balanced_binary_tree()  # Build the tree and populate leaf_nodes_list
         # Now expose the list of edges in a plain attribute (for GNN usage)
         self.edge_list = list(self.tree.edges)
+        # Map each undirected edge to a unique index for convenience
+        self.edge_to_index = {e: i for i, e in enumerate(self.edge_list)}
+        self.edge_to_index.update({(v, u): i for (u, v), i in self.edge_to_index.items()})
 
     def _build_balanced_binary_tree(self):
         """
@@ -105,14 +108,28 @@ class BulkTree:
             curvature[node] = weights[i % len(weights)]
         return curvature
 
-    def interval_cut_edges(self, interval: tuple[int, ...]) -> list[tuple[str, str]]:
+    def interval_cut_edges(
+        self, interval: tuple[int, ...], *, return_indices: bool = False
+    ) -> list:
         """
-        Given an interval of qubit indices (e.g. (2,) or (3,4)), find all edges whose removal
-        separates exactly that set of leaves from the rest of the tree.
+        Given an interval of qubit indices (e.g. ``(2,)`` or ``(3, 4)``), find all
+        edges whose removal separates exactly that set of leaves from the rest of
+        the tree.
 
-        - `interval`: a tuple of contiguous qubit indices (0-based).
-                      Example: (0,) isolates leaf "q0"; (2,3) isolates leaves "q2" and "q3".
-        - Returns: list of edge tuples (u, v). Removing any of these edges will isolate that interval.
+        Parameters
+        ----------
+        interval:
+            Tuple of contiguous qubit indices. Example ``(0,)`` isolates leaf
+            ``q0``; ``(2, 3)`` isolates leaves ``q2`` and ``q3``.
+        return_indices:
+            If ``True``, return indices of the edges instead of edge tuples using
+            ``self.edge_to_index``.
+
+        Returns
+        -------
+        list
+            Edges (or edge indices if ``return_indices`` is ``True``) that
+            isolate the given interval when removed.
         """
         # Convert qubit indices → leaf names
         target_leaves = {f"q{i}" for i in interval}
@@ -147,4 +164,7 @@ class BulkTree:
 
         if not valid_edges:
             raise ValueError(f"No valid edge cut found for interval {interval}")
+
+        if return_indices:
+            return [self.edge_to_index[(u, v)] for (u, v) in valid_edges]
         return valid_edges
