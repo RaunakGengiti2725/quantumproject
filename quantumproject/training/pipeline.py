@@ -65,7 +65,9 @@ def train_step(
     #    network input dimension agrees with the provided entropies.  This keeps
     #    the function usable with toy data in tests where only single-qubit
     #    entropies are given.
+
     all_intervals = contiguous_intervals(n_qubits, max_interval_size)
+
     if ent_torch.ndim == 1 and ent_torch.shape[0] != len(all_intervals):
         intervals = all_intervals[: ent_torch.shape[0]]
     else:
