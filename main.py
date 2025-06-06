@@ -185,10 +185,12 @@ def cut_loss(pred_weights, entropies):
 @qml.qnode(dev_q, interface="autograd")
 def z_expectation(state_vector, wire):
     """
-    QNode that, given a full 8-qubit state vector, returns <Z> on 'wire'.
-    We feed the state vector in directly via QubitStateVector.
+    QNode that, given a full n-qubit state vector, returns ⟨Z⟩ on ``wire``.
+    PennyLane 0.41 removed ``QubitStateVector`` so we use ``StatePrep`` for
+    state-vector initialization.
     """
-    qml.QubitStateVector(state_vector, wires=range(CFG["n_qubits"]))
+    # ``StatePrep`` handles both normalization and padding if required.
+    qml.StatePrep(state_vector, wires=range(CFG["n_qubits"]))
     return qml.expval(qml.PauliZ(wire))
 
 def boundary_energy_delta(state_base, state_t):

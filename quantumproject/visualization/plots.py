@@ -15,18 +15,6 @@ plt.rcParams.update(
     }
 )
 
-
-plt.style.use("seaborn-v0_8-whitegrid")
-plt.rcParams.update(
-    {
-        "font.family": "serif",
-        "font.size": 11,
-        "figure.dpi": 300,
-        "savefig.dpi": 300,
-    }
-)
-
-
 def plot_bulk_tree(tree: nx.Graph, weights: np.ndarray, outdir: str):
     """
     2D Bulk Tree (Edge Weights):
