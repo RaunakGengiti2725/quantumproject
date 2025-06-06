@@ -5,6 +5,16 @@ import networkx as nx
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 from collections import deque
 
+plt.style.use("seaborn-v0_8-whitegrid")
+plt.rcParams.update(
+    {
+        "font.family": "serif",
+        "font.size": 11,
+        "figure.dpi": 300,
+        "savefig.dpi": 300,
+    }
+)
+
 
 plt.style.use("seaborn-v0_8-whitegrid")
 plt.rcParams.update(
