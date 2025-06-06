@@ -6,3 +6,4 @@ pennylane
 scipy
 dgl
 tensorboard
+scikit-learn
