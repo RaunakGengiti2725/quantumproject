@@ -76,8 +76,7 @@ def perturb_and_compare(
         corr_after = np.corrcoef(ent_pert)
     else:
         corr_after = np.zeros((1, 1))
-
-
+        
     np.save(os.path.join(outdir, "delta_entropy.npy"), delta_S)
     np.save(os.path.join(outdir, "delta_curvature.npy"), delta_kappa)
     np.save(os.path.join(outdir, "delta_energy.npy"), delta_E)
@@ -144,4 +143,3 @@ def perturb_time_series(
         "delta_curvature": delta_curv,
         "delta_energy": delta_energy,
     }
-
