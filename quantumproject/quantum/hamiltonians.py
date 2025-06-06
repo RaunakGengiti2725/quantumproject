@@ -31,3 +31,18 @@ def heisenberg_xxz(n: int, J: float = 1.0, Delta: float = 1.0) -> qml.Hamiltonia
         coeffs.append(Delta)
         ops.append(qml.PauliZ(i) @ qml.PauliZ(nxt))
     return qml.Hamiltonian(coeffs, ops)
+
+
+def heisenberg(n: int, J: float = 1.0) -> qml.Hamiltonian:
+    """Return the isotropic Heisenberg Hamiltonian J * (XX + YY + ZZ)."""
+    coeffs = []
+    ops = []
+    for i in range(n):
+        nxt = (i + 1) % n
+        coeffs.append(J)
+        ops.append(qml.PauliX(i) @ qml.PauliX(nxt))
+        coeffs.append(J)
+        ops.append(qml.PauliY(i) @ qml.PauliY(nxt))
+        coeffs.append(J)
+        ops.append(qml.PauliZ(i) @ qml.PauliZ(nxt))
+    return qml.Hamiltonian(coeffs, ops)
