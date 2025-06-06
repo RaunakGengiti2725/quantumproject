@@ -131,7 +131,7 @@ def plot_bulk_tree_3d(tree: nx.Graph, weights: np.ndarray, outdir: str = "figure
     for node, depth in depth_map.items():
         coords_by_depth.setdefault(depth, []).append(node)
 
-    spread_factor = 2.5  # Increase to spread out more along Y and Z
+    spread_factor = 3.5  # Spread out more along Y and Z
     pos3d = {}
     for depth, nodes_in_depth in coords_by_depth.items():
         m = len(nodes_in_depth)
@@ -185,7 +185,10 @@ def plot_bulk_tree_3d(tree: nx.Graph, weights: np.ndarray, outdir: str = "figure
     mid_z = (zs.max() + zs.min()) / 2
 
     # Increase padding so the 3D view is "zoomed out" a bit more
-    half = max_range / 2 * 2.0  # 100% padding for ample space
+
+    half = max_range / 2 * 2.5  # 150% padding for ample space
+
+
     ax.set_xlim(mid_x - half, mid_x + half)
     ax.set_ylim(mid_y - half, mid_y + half)
     ax.set_zlim(mid_z - half, mid_z + half)
@@ -222,9 +225,17 @@ def plot_einstein_correlation(times: np.ndarray, correlations: list[float], outd
         pass
 
     plt.plot(times, correlations, marker="o", markersize=6, linestyle="-", linewidth=2, color="#1f77b4")
-    plt.title("Einstein Correlation Over Time", fontsize=16, fontweight='bold')
+    plt.title("Einstein Equation Correlation", fontsize=16, fontweight='bold')
     plt.xlabel("Time", fontsize=12, fontweight='bold')
     plt.ylabel("Correlation (r)", fontsize=12, fontweight='bold')
+    plt.text(
+        0.05,
+        0.95,
+        r"$\Delta E \leftrightarrow \mathcal{R}$",
+        transform=plt.gca().transAxes,
+        fontsize=12,
+        verticalalignment="top",
+    )
     plt.grid(True, linestyle="--", linewidth=0.5, alpha=0.7)
     plt.tight_layout()
     os.makedirs(outdir, exist_ok=True)
@@ -265,6 +276,30 @@ def plot_entropy_over_time(times: np.ndarray, ent_dict: dict[tuple[int, ...], np
     os.makedirs(outdir, exist_ok=True)
     plt.savefig(os.path.join(outdir, "entropy_over_time.png"))
     plt.savefig(os.path.join(outdir, "entropy_over_time.svg"))
+    plt.show()
+    plt.close()
+
+
+def plot_weight_comparison(true_w: np.ndarray, learned_w: np.ndarray, outdir: str):
+    """Scatter plot comparing learned vs. true edge weights."""
+    plt.figure(figsize=(5, 4), dpi=300)
+    manager = plt.get_current_fig_manager()
+    try:
+        manager.window.wm_geometry("800x600")
+    except Exception:
+        pass
+
+    plt.scatter(true_w, learned_w, c=learned_w, cmap="plasma", edgecolors="k", alpha=0.8)
+    lim = [min(true_w.min(), learned_w.min()), max(true_w.max(), learned_w.max())]
+    plt.plot(lim, lim, "k--", linewidth=1.5, label="Ideal")
+    plt.xlabel("True Weight", fontsize=12, fontweight="bold")
+    plt.ylabel("Learned Weight", fontsize=12, fontweight="bold")
+    plt.title("Edge Weight Comparison", fontsize=16, fontweight="bold")
+    plt.legend(framealpha=0.9)
+    plt.tight_layout()
+    os.makedirs(outdir, exist_ok=True)
+    plt.savefig(os.path.join(outdir, "weight_comparison.png"))
+    plt.savefig(os.path.join(outdir, "weight_comparison.svg"))
     plt.show()
     plt.close()
 

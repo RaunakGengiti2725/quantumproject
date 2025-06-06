@@ -28,13 +28,34 @@ class IntervalGNN(nn.Module):
         return self.lin(ent_intervals.unsqueeze(0)).squeeze(0)
 
 
-def train_step(ent_torch: torch.Tensor, tree: BulkTree, writer=None, steps: int = 100) -> torch.Tensor:
+def train_step(
+    ent_torch: torch.Tensor,
+    tree: BulkTree,
+    writer=None,
+    steps: int = 100,
+    max_interval_size: int | None = None,
+    return_target: bool = False,
+) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
     """
-    Trains a simple IntervalGNN to predict edge‐weights based on entropies of contiguous intervals.
-    - `ent_torch`: 1D Tensor of length n_intervals, containing von Neumann entropies for each region
-    - `tree`:      BulkTree instance
-    - `steps`:     number of training iterations
-    Returns a 1D Tensor of length n_edges containing learned weights.
+    Trains a simple IntervalGNN to predict edge weights from entropies of contiguous intervals.
+
+    Parameters
+    ----------
+    ent_torch:
+        1D Tensor of length ``n_intervals`` containing von Neumann entropies.
+    tree:
+        ``BulkTree`` describing the geometry.
+    steps:
+        Number of training iterations.
+    max_interval_size:
+        If given, only intervals up to this length are used (useful for large systems).
+    return_target:
+        If ``True``, also return the target weights used during training.
+
+    Returns
+    -------
+    torch.Tensor or (torch.Tensor, torch.Tensor)
+        Learned edge weights, and optionally the target weights.
     """
 
     n_qubits = tree.n_qubits
@@ -44,7 +65,9 @@ def train_step(ent_torch: torch.Tensor, tree: BulkTree, writer=None, steps: int 
     #    network input dimension agrees with the provided entropies.  This keeps
     #    the function usable with toy data in tests where only single-qubit
     #    entropies are given.
-    all_intervals = contiguous_intervals(n_qubits)
+
+    all_intervals = contiguous_intervals(n_qubits, max_interval_size)
+
     if ent_torch.ndim == 1 and ent_torch.shape[0] != len(all_intervals):
         intervals = all_intervals[: ent_torch.shape[0]]
     else:
@@ -91,7 +114,9 @@ def train_step(ent_torch: torch.Tensor, tree: BulkTree, writer=None, steps: int 
         loss.backward()
         optimizer.step()
 
-    # 5. Return the learned weights as a 1D Tensor
+    # 5. Return the learned weights (and optionally the training target)
+    if return_target:
+        return preds.detach(), target.detach()
     return preds.detach()
 
 
