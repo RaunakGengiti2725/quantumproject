@@ -16,6 +16,17 @@ plt.rcParams.update(
 )
 
 
+plt.style.use("seaborn-v0_8-whitegrid")
+plt.rcParams.update(
+    {
+        "font.family": "serif",
+        "font.size": 11,
+        "figure.dpi": 300,
+        "savefig.dpi": 300,
+    }
+)
+
+
 def plot_bulk_tree(tree: nx.Graph, weights: np.ndarray, outdir: str):
     """
     2D Bulk Tree (Edge Weights):
@@ -193,7 +204,9 @@ def plot_bulk_tree_3d(
     mid_z = (zs.max() + zs.min()) / 2
 
     # Increase padding so the 3D view is "zoomed out" a bit more
+
     half = max_range / 2 * 2.5  # 150% padding for ample space
+
     ax.set_xlim(mid_x - half, mid_x + half)
     ax.set_ylim(mid_y - half, mid_y + half)
     ax.set_zlim(mid_z - half, mid_z + half)
