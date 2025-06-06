@@ -26,6 +26,8 @@ def compare_entropies(true_ent: np.ndarray, recon_ent: np.ndarray) -> dict[str, 
     return {"rmse": rmse, "cosine": cos_sim, "corr": corr}
 
 
+
+
 def entropy_round_trip(
     tree: BulkTree,
     weights: Iterable[float],
