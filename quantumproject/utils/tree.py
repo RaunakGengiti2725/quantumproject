@@ -159,10 +159,12 @@ class BulkTree:
             if len(components) != 2:
                 continue
 
+
             leaf_components = [
                 {n for n in comp if n in self.leaf_nodes_list} for comp in components
             ]
             if any(target_leaves == leaves for leaves in leaf_components):
+
                 valid_edges.append((u, v))
 
         if not valid_edges:
