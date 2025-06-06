@@ -142,24 +142,24 @@ class BulkTree:
             neighbors = list(self.tree.neighbors(leaf))
             if not neighbors:
                 raise ValueError(f"Leaf {leaf} has no connecting edge.")
-            return [(leaf, neighbors[0])]
+            edge = (leaf, neighbors[0])
+            if return_indices:
+                return [self.edge_to_index[edge]]
+            return [edge]
 
         # General case: interval length ≥ 2
         valid_edges = []
         for u, v in list(self.tree.edges):
             # Temporarily remove this edge
             self.tree.remove_edge(u, v)
-            components = list(nx.connected_components(self.tree))
+            components = [set(c) for c in nx.connected_components(self.tree)]
             # Re-add the edge
             self.tree.add_edge(u, v)
 
             if len(components) != 2:
                 continue
 
-            c1, c2 = components
-            if target_leaves.issubset(c1) and target_leaves.isdisjoint(c2):
-                valid_edges.append((u, v))
-            elif target_leaves.issubset(c2) and target_leaves.isdisjoint(c1):
+            if any(target_leaves == c for c in components):
                 valid_edges.append((u, v))
 
         if not valid_edges:

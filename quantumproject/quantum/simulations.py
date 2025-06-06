@@ -9,7 +9,7 @@ import numpy as np
 import pennylane as qml
 from pennylane import numpy as pnp
 
-from .hamiltonians import tfim, heisenberg_xxz
+from .hamiltonians import tfim, heisenberg_xxz, heisenberg
 
 
 class Simulator:
@@ -21,6 +21,7 @@ class Simulator:
         self.hamiltonians = {
             "tfim": tfim,
             "xxz": heisenberg_xxz,
+            "heisenberg": heisenberg,
         }
 
     def build_hamiltonian(self, name: str, **params) -> qml.Hamiltonian:
@@ -42,9 +43,11 @@ class Simulator:
 
 
 @lru_cache(maxsize=None)
-def contiguous_intervals(n: int) -> list[tuple[int, ...]]:
+def contiguous_intervals(n: int, max_len: int | None = None) -> list[tuple[int, ...]]:
+    """Return all contiguous intervals up to ``max_len`` (exclusive of full chain)."""
     regions: list[tuple[int, ...]] = []
-    for length in range(1, n):
+    limit = n if max_len is None else min(n, max_len + 1)
+    for length in range(1, limit):
         for start in range(0, n - length):
             regions.append(tuple(range(start, start + length)))
     return regions
