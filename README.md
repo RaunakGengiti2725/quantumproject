@@ -31,3 +31,16 @@ A quenched spin chain develops entanglement across contiguous intervals. A graph
 ## Tests
 Simple unit tests for entropy computation and GNN training are located in `tests/`.
 
+
+## Phase 4 Features
+- Causal perturbations via `quantum.perturb`
+- Entanglement inversion metrics in `analysis/invertibility.py`
+- Saliency and attention visualizations under `quantumproject.visualization`
+
+## Advanced Analysis
+- `analysis.geodesic` reconstructs geodesic distance matrices and 2D embeddings.
+- `analysis.scaling` fits the scaling law ⟨d⟩ ∝ n^(1/D) to estimate spatial dimension.
+- `analysis.invertibility.entropy_round_trip` tests entropy ↔ geometry fidelity.
+- `quantum.perturb.perturb_time_series` visualizes causal propagation of boundary perturbations.
+- `models.quantum_gnn.HybridQuantumGNN` provides a quantum–classical predictor.
+- `utils.graph_topologies` and `utils.bulk_graph` support custom bulk graphs beyond the default binary tree.

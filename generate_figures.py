@@ -3,6 +3,13 @@ import argparse
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+plt.style.use("seaborn-v0_8-whitegrid")
+plt.rcParams.update({
+    "font.family": "serif",
+    "font.size": 11,
+    "figure.dpi": 300,
+    "savefig.dpi": 300,
+})
 from scipy.stats import pearsonr, spearmanr, zscore
 
 from quantumproject.quantum.simulations import (
@@ -17,6 +24,7 @@ from quantumproject.visualization.plots import (
     plot_bulk_tree,
     plot_bulk_tree_3d,
     plot_entropy_over_time,
+    plot_weight_comparison,
 )
 
 
@@ -24,9 +32,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generate publication‐ready visualizations for quantum geometry"
     )
-    parser.add_argument("--n_qubits", type=int, default=8, help="Number of qubits")
+    parser.add_argument("--n_qubits", type=int, default=12, help="Number of qubits")
     parser.add_argument(
-        "--hamiltonian", choices=["tfim", "xxz"], default="xxz", help="Which Hamiltonian to use"
+        "--hamiltonian",
+        choices=["tfim", "xxz", "heisenberg"],
+        default="xxz",
+        help="Which Hamiltonian to use",
+    )
+    parser.add_argument(
+        "--max_interval_size",
+        type=int,
+        default=2,
+        help="Maximum interval length to use when training",
     )
     parser.add_argument("--steps", type=int, default=16, help="Number of time steps")
     parser.add_argument("--t_max", type=float, default=np.pi, help="Maximum evolution time")
@@ -44,7 +61,7 @@ def main() -> None:
     sim = Simulator(args.n_qubits)
     H = sim.build_hamiltonian(args.hamiltonian)
 
-    regions = contiguous_intervals(args.n_qubits)
+    regions = contiguous_intervals(args.n_qubits, args.max_interval_size)
     tree = BulkTree(args.n_qubits)
     state0 = sim.time_evolved_state(H, 0.0)
 
@@ -53,6 +70,8 @@ def main() -> None:
     spearman_corrs = []
     all_dE = []
     weights_last = None
+    weight_history = []
+    target_history = []
 
     for t in times:
         print(f"\n⏱️ Time step t = {t:.2f}")
@@ -62,8 +81,18 @@ def main() -> None:
         ent_series.append(entropies)
 
         ent_torch = torch.tensor(entropies, dtype=torch.float32)
-        weights = train_step(ent_torch, tree, writer=None, steps=100)
+        weights, target = train_step(
+            ent_torch,
+            tree,
+            writer=None,
+            steps=100,
+            max_interval_size=args.max_interval_size,
+            return_target=True,
+        )
         weights_last = weights.detach().cpu().numpy()
+        target_last = target.detach().cpu().numpy()
+        weight_history.append(weights_last)
+        target_history.append(target_last)
 
         curvatures = tree.compute_curvatures(weights_last)
         dE = boundary_energy_delta(state0, state_t)
@@ -100,7 +129,7 @@ def main() -> None:
             pearson_corrs.append(r_pearson)
             spearman_corrs.append(r_spearman)
 
-            plt.figure(figsize=(5, 4), dpi=150)
+            plt.figure(figsize=(5, 4), dpi=300)
             plt.scatter(x_vals, y_vals, c=y_vals, cmap="viridis", alpha=0.8, edgecolors="k")
             plt.xlabel("Curvature", fontsize=12, fontweight='bold')
             plt.ylabel("ΔE sum", fontsize=12, fontweight='bold')
@@ -114,7 +143,7 @@ def main() -> None:
             pearson_corrs.append(0.0)
             spearman_corrs.append(0.0)
 
-            plt.figure(figsize=(5, 4), dpi=150)
+            plt.figure(figsize=(5, 4), dpi=300)
             plt.text(0.5, 0.5, "Flat Data", ha="center", va="center", fontsize=12, color="gray")
             plt.xlabel("Curvature", fontsize=12, fontweight='bold')
             plt.ylabel("ΔE sum", fontsize=12, fontweight='bold')
@@ -127,7 +156,7 @@ def main() -> None:
     all_dE = np.stack(all_dE)
     np.save(os.path.join(args.outdir, "all_dE_series.npy"), all_dE)
 
-    plt.figure(figsize=(8, 4), dpi=150)
+    plt.figure(figsize=(8, 4), dpi=300)
     plt.imshow(
         all_dE.T,
         aspect="auto",
@@ -143,7 +172,7 @@ def main() -> None:
     plt.savefig(os.path.join(args.outdir, "delta_E_heatmap.png"))
     plt.close()
 
-    plt.figure(figsize=(8, 5), dpi=150)
+    plt.figure(figsize=(8, 5), dpi=300)
     plt.plot(times, pearson_corrs, marker="o", linestyle="--", linewidth=2, label="Pearson", color="#1f77b4")
     plt.plot(times, spearman_corrs, marker="s", linestyle="-", linewidth=2, label="Spearman", color="#ff7f0e")
     plt.axhline(0, color="gray", linestyle=":", linewidth=0.8)
@@ -159,6 +188,7 @@ def main() -> None:
     if weights_last is not None:
         plot_bulk_tree(tree.tree, weights_last, args.outdir)
         plot_bulk_tree_3d(tree.tree, weights_last, args.outdir)
+        plot_weight_comparison(target_history[-1], weight_history[-1], args.outdir)
 
     key_intervals = []
     for candidate in [(0, 1), (1, 2), (2, 3)]:
