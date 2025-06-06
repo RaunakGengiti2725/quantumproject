@@ -5,18 +5,16 @@ import networkx as nx
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 from collections import deque
 
+# Use a clean, high-quality plotting style for publication
 plt.style.use("seaborn-v0_8-whitegrid")
 
-plt.rcParams.update(
-    {
-        "font.family": "serif",
-        "font.size": 11,
-        "figure.dpi": 300,
-        "savefig.dpi": 300,
-    }
-)
-
-
+# Configure font and figure appearance
+plt.rcParams.update({
+    "font.family": "serif",
+    "font.size": 11,
+    "figure.dpi": 200,
+    "savefig.dpi": 300,
+})
 
 def plot_bulk_tree(tree: nx.Graph, weights: np.ndarray, outdir: str):
     """

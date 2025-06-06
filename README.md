@@ -31,3 +31,8 @@ A quenched spin chain develops entanglement across contiguous intervals. A graph
 ## Tests
 Simple unit tests for entropy computation and GNN training are located in `tests/`.
 
+
+## Phase 4 Features
+- Causal perturbations via `quantum.perturb`
+- Entanglement inversion metrics in `analysis/invertibility.py`
+- Saliency and attention visualizations under `quantumproject.visualization`
