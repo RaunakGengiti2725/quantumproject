@@ -66,8 +66,17 @@ def perturb_and_compare(
     delta_kappa = np.array([curv_pert[k] - curv_base[k] for k in curv_base])
     delta_E = np.array(dE_pert) - np.array(dE_base)
 
-    corr_before = np.corrcoef(ent_base)
-    corr_after = np.corrcoef(ent_pert)
+
+    if np.std(ent_base) > 1e-8:
+        corr_before = np.corrcoef(ent_base)
+    else:
+        corr_before = np.zeros((1, 1))
+
+    if np.std(ent_pert) > 1e-8:
+        corr_after = np.corrcoef(ent_pert)
+    else:
+        corr_after = np.zeros((1, 1))
+
 
     np.save(os.path.join(outdir, "delta_entropy.npy"), delta_S)
     np.save(os.path.join(outdir, "delta_curvature.npy"), delta_kappa)
@@ -135,6 +144,4 @@ def perturb_time_series(
         "delta_curvature": delta_curv,
         "delta_energy": delta_energy,
     }
-
-
 

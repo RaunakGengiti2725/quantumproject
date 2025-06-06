@@ -15,6 +15,7 @@ plt.rcParams.update(
     }
 )
 
+
 def plot_bulk_tree(tree: nx.Graph, weights: np.ndarray, outdir: str):
     """
     2D Bulk Tree (Edge Weights):

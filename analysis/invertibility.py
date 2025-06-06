@@ -22,10 +22,12 @@ def compare_entropies(true_ent: np.ndarray, recon_ent: np.ndarray) -> dict[str, 
     diff = true_ent - recon_ent
     rmse = float(np.sqrt(np.mean(diff ** 2)))
     cos_sim = float(np.dot(true_ent, recon_ent) / (np.linalg.norm(true_ent) * np.linalg.norm(recon_ent) + 1e-12))
-    corr = float(np.corrcoef(true_ent, recon_ent)[0, 1])
+
+    if np.std(true_ent) > 1e-8 and np.std(recon_ent) > 1e-8:
+        corr = float(np.corrcoef(true_ent, recon_ent)[0, 1])
+    else:
+        corr = 0.0
     return {"rmse": rmse, "cosine": cos_sim, "corr": corr}
-
-
 
 
 def entropy_round_trip(
