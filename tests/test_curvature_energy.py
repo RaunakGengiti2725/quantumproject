@@ -36,6 +36,7 @@ def test_safe_pearson_handles_nan_inf():
     assert not np.isnan(p)
 
 
+
 def test_safe_einstein_constant():
     x = np.ones(10)
     y = np.arange(10)
@@ -51,6 +52,7 @@ def test_compute_functions_shapes():
     dE = compute_energy_deltas(g)
     assert kappa.shape == (4,)
     assert dE.shape == (4,)
+
 
 
 def test_backend_consistency():
@@ -72,3 +74,4 @@ def test_backend_consistency():
             assert np.allclose(r_e_jax, r_e)
     except Exception:
         pass
+

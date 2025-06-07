@@ -90,6 +90,7 @@ def timed(fn: Callable[..., T]) -> Callable[..., T]:
 def safe_pearson_correlation(
     x: NDArray[np.floating], y: NDArray[np.floating]
 ) -> Tuple[float, float]:
+
     """Return Pearson correlation of ``x`` and ``y`` with robust handling.
 
     Parameters
@@ -203,6 +204,7 @@ def compute_curvature(graph: nx.Graph) -> NDArray[np.floating]:
     A = nx.to_scipy_sparse_array(
         graph, nodelist=nodelist, weight=None, format="csr", dtype=float
     )
+
     deg = np.asarray(A.sum(axis=1)).ravel()
     inv_deg = np.divide(1.0, deg, out=np.zeros_like(deg), where=deg != 0)
     neighbor_sum = A.dot(inv_deg)
@@ -211,12 +213,14 @@ def compute_curvature(graph: nx.Graph) -> NDArray[np.floating]:
 
 
 @_jit(nopython=True)
+
 def _aggregate_energy(
     edges_u: NDArray[np.int_],
     edges_v: NDArray[np.int_],
     deltas: NDArray[np.floating],
     out: NDArray[np.floating],
 ) -> None:
+
     for i in range(edges_u.shape[0]):
         u = edges_u[i]
         v = edges_v[i]
@@ -225,10 +229,12 @@ def _aggregate_energy(
         out[v] += d
 
 
+
 @timed
 def compute_energy_deltas(
     graph: nx.Graph, *, attr: str = "delta_energy"
 ) -> NDArray[np.floating]:
+
     """Aggregate energy deltas for each node.
 
     Parameters
@@ -238,6 +244,7 @@ def compute_energy_deltas(
     attr : str, optional
         Edge attribute storing the energy delta.
         Defaults to ``"delta_energy"``.
+
 
     Returns
     -------
@@ -282,6 +289,7 @@ if __name__ == "__main__":  # pragma: no cover
         default=1_000_000,
         help="Number of nodes in the random graph",
     )
+
     parser.add_argument("--p", type=float, default=1e-6, help="Edge probability")
     args = parser.parse_args()
 
@@ -316,3 +324,5 @@ if __name__ == "__main__":  # pragma: no cover
     print("|---|---|")
     for k, v in timings.items():
         print(f"| {k} | {v:.4f} |")
+
+

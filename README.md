@@ -62,6 +62,7 @@ from curvature_energy_analysis import (
     compute_energy_deltas,
     safe_pearson_correlation,
     safe_einstein_correlation,
+
 )
 ```
 - `compute_curvature(graph)` – return per-node scalar curvature as a NumPy array.
@@ -71,6 +72,7 @@ from curvature_energy_analysis import (
   fallback returning `(r, p)`.
 - `safe_einstein_correlation(x, y)` – fast einsum-based correlation returning
   only `r`.
+
 
 ### Example
 ```python
@@ -90,6 +92,7 @@ delta = compute_energy_deltas(g)
 r, p = safe_pearson_correlation(curv, delta)
 r_e = safe_einstein_correlation(curv, delta)
 print(r, p, r_e)
+
 ```
 
 ### Benchmark

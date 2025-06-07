@@ -13,9 +13,11 @@ from quantumproject.quantum.simulations import (
 from quantumproject.utils.tree import BulkTree
 
 
+
 def train_step(
     ent: torch.Tensor, tree: BulkTree, writer=None, steps: int = 10
 ) -> torch.Tensor:
+
     """Simple placeholder training loop used in unit tests."""
 
     mean_val = float(ent.mean())
