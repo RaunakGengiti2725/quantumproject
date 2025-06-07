@@ -48,6 +48,7 @@ __all__ = [
     "safe_pearson_correlation",
     "safe_einstein_correlation",
 ]
+
 T = TypeVar("T")
 
 
@@ -63,6 +64,7 @@ def _jit(nopython: bool = True) -> (
 
     def wrapper(fn: Callable[..., T]) -> Callable[..., T]:
         return fn
+
     return wrapper
 
 
@@ -118,7 +120,7 @@ def safe_pearson_correlation(
         r = r_num / r_den
         n = len(x)
         if n > 2 and abs(r) < 1:
-            t = r * np.sqrt((n - 2)/(1 - r**2))
+            t = r * np.sqrt((n - 2) / (1 - r**2))
             p = 2 * stats.t.sf(abs(t), n - 2)
         else:
             p = 1.0
@@ -197,7 +199,8 @@ def compute_energy_deltas(
     out = np.zeros(len(nodelist), dtype=np.float64)
     _aggregate_energy(u_idx, v_idx, delta, out)
     return out
-    
+
+
 if __name__ == "__main__":  # pragma: no cover
     parser = argparse.ArgumentParser(
         description="Benchmark curvature-energy analysis"
