@@ -2,122 +2,178 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-import networkx as nx
 
-from quantumproject.quantum.simulations import contiguous_intervals
+from quantumproject.quantum.simulations import (
+    get_time_evolution_qnode,
+    make_xxz_hamiltonian,
+    contiguous_intervals,
+    von_neumann_entropy,
+)
 from quantumproject.utils.tree import BulkTree
 
-# … (import any other needed modules for your GNN) …
 
-
-class IntervalGNN(nn.Module):
+# ─────────────────────────────────────────────────────────────
+# 1) Interval‐to‐Edge MLP (unchanged except noise)
+# ─────────────────────────────────────────────────────────────
+class IntervalToEdgeMLP(nn.Module):
     """
-    Placeholder GNN that takes:
-     - n_intervals  = number of intervals (should equal len(contiguous_intervals(n_qubits)))
-     - n_edges      = number of edges in the BulkTree
-     - adj_matrix   = adjacency matrix encoding which intervals connect to which edges
-    You can replace this with your actual GNN definition.
+    MLP that maps a normalized entropy vector (NUM_INTERVALS) → edge weights (NUM_EDGES).
+    Architecture: Linear → ReLU → Linear → Softplus.
     """
-    def __init__(self, n_intervals: int, n_edges: int, adj: torch.Tensor):
+    def __init__(self, num_intervals: int, num_edges: int):
         super().__init__()
-        # Example: one linear layer mapping interval representation → edge weights
-        self.lin = nn.Linear(n_intervals, n_edges)
+        hidden_dim = 64
+        self.net = nn.Sequential(
+            nn.Linear(num_intervals, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, num_edges),
+            nn.Softplus()   # ensures positivity of weights
+        )
 
-    def forward(self, ent_intervals: torch.Tensor):
-        # ent_intervals has shape [n_intervals], output should be [n_edges]
-        return self.lin(ent_intervals.unsqueeze(0)).squeeze(0)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x: shape (1, NUM_INTERVALS)
+        # returns shape (1, NUM_EDGES)
+        return self.net(x)
 
 
-def train_step(
-    ent_torch: torch.Tensor,
+# ─────────────────────────────────────────────────────────────
+# 2) train_model_for_time (increased dither noise)
+# ─────────────────────────────────────────────────────────────
+def train_model_for_time(
     tree: BulkTree,
-    writer=None,
-    steps: int = 100,
-    max_interval_size: int | None = None,
-    return_target: bool = False,
-) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+    state_vector: np.ndarray,
+    num_epochs: int = 500,
+    lr: float = 1e-2,
+    noise_scale: float = 1e-3,        # We keep noise_scale=1e-3
+):
     """
-    Trains a simple IntervalGNN to predict edge weights from entropies of contiguous intervals.
-
-    Parameters
-    ----------
-    ent_torch:
-        1D Tensor of length ``n_intervals`` containing von Neumann entropies.
-    tree:
-        ``BulkTree`` describing the geometry.
-    steps:
-        Number of training iterations.
-    max_interval_size:
-        If given, only intervals up to this length are used (useful for large systems).
-    return_target:
-        If ``True``, also return the target weights used during training.
-
-    Returns
-    -------
-    torch.Tensor or (torch.Tensor, torch.Tensor)
-        Learned edge weights, and optionally the target weights.
+    Train an IntervalToEdgeMLP to map normalized entropies → edge weights.
+    - We use 20 Trotter steps in the QNode instead of just 5.
+    - We keep noise_scale=1e-3 to break exact symmetry in entropies.
     """
 
+    # A) Build list of all contiguous intervals
     n_qubits = tree.n_qubits
+    INTERVALS = contiguous_intervals(n_qubits)
+    NUM_INTERVALS = len(INTERVALS)
+    NUM_EDGES = len(tree.edge_list)
 
-    # 1. Compute all contiguous intervals for n_qubits. If ent_torch supplies
-    #    fewer values than the number of intervals, slice to match so the
-    #    network input dimension agrees with the provided entropies.  This keeps
-    #    the function usable with toy data in tests where only single-qubit
-    #    entropies are given.
+    # B) Compute raw entropies
+    raw_entropies = []
+    for region in INTERVALS:
+        Si = von_neumann_entropy(state_vector, list(region))
+        raw_entropies.append(Si)
+    raw_entropies = np.array(raw_entropies, dtype=np.float32)
 
-    all_intervals = contiguous_intervals(n_qubits, max_interval_size)
+    # C) Normalize to mean=0, std=1
+    mean_S = raw_entropies.mean()
+    std_S = raw_entropies.std() if raw_entropies.std() > 1e-9 else 1.0
+    norm_entropies = (raw_entropies - mean_S) / std_S
 
-    if ent_torch.ndim == 1 and ent_torch.shape[0] != len(all_intervals):
-        intervals = all_intervals[: ent_torch.shape[0]]
-    else:
-        intervals = all_intervals
+    # D) Add small Gaussian noise to break symmetry
+    noise = np.random.normal(loc=0.0, scale=noise_scale, size=norm_entropies.shape).astype(np.float32)
+    norm_entropies = norm_entropies + noise
 
-    n_intervals = len(intervals)
-    n_edges = len(tree.edge_list)
+    ent_torch = torch.tensor(norm_entropies, dtype=torch.float32).unsqueeze(0)
 
-    # 2. Build adjacency: which interval “touches” which edge?
-    #    adj[i, j] = 1 if interval i and edge j share any leaf
-    adj = torch.zeros((n_intervals, n_edges), dtype=torch.float32)
-    for i, interval in enumerate(intervals):
-        # Each interval maps to a set of leaves, e.g. (2,3) → {"q2","q3"}
-        leaf_names = {f"q{k}" for k in interval}
-        for j, (u, v) in enumerate(tree.edge_list):
-            # That edge “touches” any leaf in leaf_names if either u or v is an ancestor of those leaves
-            # We check: does the subtree under that edge contain any leaf in leaf_names?
-            # A quick way: remove that edge, see if any leaf in leaf_names is disconnected from the other side
-            tree.tree.remove_edge(u, v)
-            comps = list(nx.connected_components(tree.tree))
-            tree.tree.add_edge(u, v)
+    # E) Instantiate model & optimizer
+    model = IntervalToEdgeMLP(NUM_INTERVALS, NUM_EDGES)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
 
-            # If a leaf in leaf_names is in one component and not all in the same, then that edge cuts through this interval
-            for comp in comps:
-                if leaf_names.issubset(comp) and not leaf_names.issubset(set.union(*[c for c in comps if c != comp])):
-                    adj[i, j] = 1.0
-                    break
+    # F) Precompute interval cuts (return_indices=True) with 20 Trotter RKT
+    interval_cuts = []
+    for region in INTERVALS:
+        try:
+            cut_edge_indices = tree.interval_cut_edges(region, return_indices=True)
+        except ValueError:
+            cut_edge_indices = []
+        interval_cuts.append(cut_edge_indices)
 
-    # 3. Initialize GNN and optimizer
-    model = IntervalGNN(n_intervals, n_edges, adj)
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
-    loss_fn = nn.MSELoss()
+    # G) Define cut_loss
+    def cut_loss(pred_w: torch.Tensor) -> torch.Tensor:
+        losses = []
+        for i, cut_edges in enumerate(interval_cuts):
+            if len(cut_edges) > 0:
+                cut_sum = torch.sum(pred_w[cut_edges])
+            else:
+                cut_sum = torch.tensor(0.0, dtype=pred_w.dtype, device=pred_w.device)
+            target_val = ent_torch[0, i]
+            losses.append((cut_sum - target_val) ** 2)
+        return torch.stack(losses).mean()
 
-    # 4. Train to minimize difference between predicted “edge weights” and some target. 
-    #    Here, for illustration, we pretend the “target weights” are all zeros + a small noise.
-    #    In a real use-case, you’d have a ground‐truth assignment.
-    #    We simply train the GNN to reproduce its own entropies so we get some nontrivial output.
-    target = torch.randn(n_edges) * 0.1  # dummy target; replace with real target if you have one
-
-    for _ in range(steps):
+    # H) Training loop
+    model.train()
+    for epoch in range(num_epochs):
         optimizer.zero_grad()
-        preds = model(ent_torch)
-        loss = loss_fn(preds, target)
+        preds = model(ent_torch).squeeze(0)
+        loss = cut_loss(preds)
         loss.backward()
         optimizer.step()
 
-    # 5. Return the learned weights (and optionally the training target)
-    if return_target:
-        return preds.detach(), target.detach()
-    return preds.detach()
+        if epoch % 100 == 0:
+            print(f"  [Epoch {epoch:4d}] loss = {loss.item():.6f}")
+
+    return model(ent_torch).detach().squeeze(0).numpy()
 
 
-# No other functions in pipeline.py import BulkTree to avoid circular imports.
+# ─────────────────────────────────────────────────────────────
+# 3) run_one_time_step (uses 20 Trotter steps)
+# ─────────────────────────────────────────────────────────────
+def run_one_time_step(
+    tree: BulkTree,
+    t: float,
+    base_state: np.ndarray,
+    ham_params: dict,
+    num_epochs: int = 500,
+):
+    """
+    1) Build XXZ Hamiltonian via make_xxz_hamiltonian(...).
+    2) Create a 20‐step Trotter QNode (get_time_evolution_qnode).
+    3) Evolve |+>^n → get state_t.
+    4) Compute ΔE_i = ⟨Z_i⟩(t) - ⟨Z_i⟩(0) for each boundary qubit.
+    5) Train MLP on entropies of state_t (train_model_for_time).
+    6) Compute curvature κ_v = -∑_{e∈incident(v)} w_e for each internal v.
+    """
+
+    n = tree.n_qubits
+
+    # A) XXZ with a nonzero transverse field h=1.0
+    Jx = ham_params.get("Jx", 1.0)
+    Jy = ham_params.get("Jy", 0.8)
+    Jz = ham_params.get("Jz", 0.6)
+    h_field = ham_params.get("h", 1.0)
+    H_xxz = make_xxz_hamiltonian(n, Jx, Jy, Jz, h_field)
+
+    # B) Use 20 Trotter steps instead of 5
+    evolve = get_time_evolution_qnode(n_qubits=n, hamiltonian=H_xxz, trotter_steps=20)
+
+    # C) Evolve state
+    state_t = evolve(t)
+
+    # D) Compute boundary ΔE
+    def z_expectation(state_vec: np.ndarray, wire: int) -> float:
+        psi = state_vec.reshape([2] * n)
+        subsys = [wire]
+        trace_out = [i for i in range(n) if i not in subsys]
+        rho = np.tensordot(psi, psi.conj(), axes=(trace_out, trace_out))
+        return float(np.real(np.trace(rho @ np.array([[1, 0], [0, -1]], dtype=complex))))
+
+    deltaE = []
+    for i in range(n):
+        E0 = z_expectation(base_state, i)
+        Et = z_expectation(state_t, i)
+        deltaE.append(Et - E0)
+
+    # E) Train MLP with noise_scale=1e-3 (unchanged)
+    learned_w = train_model_for_time(tree, state_t, num_epochs=num_epochs, lr=1e-2, noise_scale=1e-3)
+
+    # F) Compute curvature
+    curvatures = {}
+    for v in tree.tree.nodes:
+        if tree.tree.degree[v] > 1:
+            incident = [tree.edge_to_index[(v, nbr)] for nbr in tree.tree.neighbors(v)]
+            curvatures[v] = -np.sum(learned_w[incident])
+        else:
+            curvatures[v] = 0.0
+
+    return curvatures, deltaE, learned_w
