@@ -1,5 +1,4 @@
 """High-performance curvature and energy analysis utilities.
-
 This module offers robust correlation routines and fast aggregation of
 curvature and energy metrics on large graphs. It automatically detects GPU and
 JAX backends when available and logs timing information for each public
