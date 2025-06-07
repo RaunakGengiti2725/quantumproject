@@ -2,18 +2,23 @@
 
 from __future__ import annotations
 
-import networkx as nx
 from collections import deque
 from typing import Iterable
+
+import networkx as nx  # type: ignore[import]
 
 
 class BulkGraph:
     def __init__(self, graph: nx.Graph):
         self.tree = graph
-        self.leaf_nodes_list = [n for n in graph.nodes if graph.degree[n] == 1 and n.startswith("q")]
+        self.leaf_nodes_list = [
+            n for n in graph.nodes if graph.degree[n] == 1 and n.startswith("q")
+        ]
         self.edge_list = list(graph.edges)
         self.edge_to_index = {e: i for i, e in enumerate(self.edge_list)}
-        self.edge_to_index.update({(v, u): i for (u, v), i in self.edge_to_index.items()})
+        self.edge_to_index.update(
+            {(v, u): i for (u, v), i in self.edge_to_index.items()}
+        )
         self.n_qubits = len(self.leaf_nodes_list)
 
     def leaf_nodes(self) -> list[str]:
@@ -48,7 +53,9 @@ class BulkGraph:
             curv[node] = weights[i % len(weights)]
         return curv
 
-    def interval_cut_edges(self, interval: tuple[int, ...], *, return_indices: bool = False) -> list:
+    def interval_cut_edges(
+        self, interval: tuple[int, ...], *, return_indices: bool = False
+    ) -> list:
         target_leaves = {f"q{i}" for i in interval}
         others = set(self.leaf_nodes_list) - target_leaves
         if not others:

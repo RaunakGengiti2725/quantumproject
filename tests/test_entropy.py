@@ -1,5 +1,5 @@
 import numpy as np
-import pennylane as qml
+import pennylane as qml  # type: ignore[import-untyped]
 
 from quantumproject.quantum.simulations import von_neumann_entropy
 
@@ -14,5 +14,5 @@ def test_bell_entropy():
         return qml.state()
 
     state = circuit()
-    S = von_neumann_entropy(state, [0])
+    S = von_neumann_entropy(state, [0])  # type: ignore[no-untyped-call]
     assert np.allclose(S, np.log(2), atol=1e-6)
