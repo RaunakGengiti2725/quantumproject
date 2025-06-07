@@ -16,7 +16,7 @@ from typing import Any, Callable, Tuple, TypeVar, cast
 import networkx as nx  # type: ignore[import-untyped]
 import numpy as np
 from numpy.typing import NDArray
-from scipy import stats  # type: ignore[import-untyped]
+from scipy.stats import t  # type: ignore[import-untyped]
 
 try:
     from numba import jit  # type: ignore[import-not-found]
