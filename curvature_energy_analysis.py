@@ -48,7 +48,6 @@ __all__ = [
     "safe_pearson_correlation",
     "safe_einstein_correlation",
 ]
-
 T = TypeVar("T")
 
 
@@ -64,7 +63,6 @@ def _jit(nopython: bool = True) -> (
 
     def wrapper(fn: Callable[..., T]) -> Callable[..., T]:
         return fn
-
     return wrapper
 
 
@@ -159,7 +157,6 @@ def _aggregate_energy(
     deltas: NDArray[np.floating],
     out: NDArray[np.floating],
 ) -> None:
-    
     for i in range(edges_u.shape[0]):
         u = edges_u[i]
         v = edges_v[i]
@@ -200,8 +197,7 @@ def compute_energy_deltas(
     out = np.zeros(len(nodelist), dtype=np.float64)
     _aggregate_energy(u_idx, v_idx, delta, out)
     return out
-
-
+    
 if __name__ == "__main__":  # pragma: no cover
     parser = argparse.ArgumentParser(
         description="Benchmark curvature-energy analysis"
