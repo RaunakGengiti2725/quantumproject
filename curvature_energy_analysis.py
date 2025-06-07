@@ -5,7 +5,6 @@ curvature and energy metrics on large graphs. It automatically detects GPU and
 JAX backends when available and logs timing information for each public
 function.
 """
-
 from __future__ import annotations
 
 import argparse
@@ -44,9 +43,7 @@ except Exception:  # pragma: no cover - jax not installed
     jax_jit = None
     JAX_AVAILABLE = False
 
-
 logger = logging.getLogger(__name__)
-
 __all__ = [
     "compute_curvature",
     "compute_energy_deltas",
@@ -85,11 +82,11 @@ def timed(fn: Callable[..., T]) -> Callable[..., T]:
 
     return wrapper
 
-
 @timed
 def safe_pearson_correlation(
     x: NDArray[np.floating], y: NDArray[np.floating]
 ) -> Tuple[float, float]:
+
     """Return Pearson correlation of ``x`` and ``y`` with robust handling.
 
     Parameters
@@ -145,7 +142,6 @@ def safe_pearson_correlation(
             p = 1.0
         return float(r), float(p)
 
-
 @timed
 def safe_einstein_correlation(
     x: NDArray[np.floating], y: NDArray[np.floating]
@@ -182,7 +178,7 @@ def safe_einstein_correlation(
 
 @timed
 def compute_curvature(graph: nx.Graph) -> NDArray[np.floating]:
-    r"""Vectorized toy curvature estimate for each node.
+    """Vectorized toy curvature estimate for each node.
 
     Uses a simple combinatorial expression based on node degrees:
 
@@ -210,7 +206,7 @@ def compute_curvature(graph: nx.Graph) -> NDArray[np.floating]:
     return curvature
 
 
-@_jit(nopython=True)
+@_jit(nopython=True)a
 def _aggregate_energy(
     edges_u: NDArray[np.int_],
     edges_v: NDArray[np.int_],
@@ -228,8 +224,7 @@ def _aggregate_energy(
 @timed
 def compute_energy_deltas(
     graph: nx.Graph, *, attr: str = "delta_energy"
-) -> NDArray[np.floating]:
-    """Aggregate energy deltas for each node.
+) -> NDArray[np.floating]:    """Aggregate energy deltas for each node.
 
     Parameters
     ----------
