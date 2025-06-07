@@ -1,9 +1,10 @@
 import os
-import numpy as np
-import matplotlib.pyplot as plt
-import networkx as nx
-from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 from collections import deque
+
+import matplotlib.pyplot as plt
+import networkx as nx  # type: ignore[import]
+import numpy as np
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
 plt.style.use("seaborn-v0_8-whitegrid")
 plt.rcParams.update(
@@ -41,7 +42,7 @@ def plot_bulk_tree(tree: nx.Graph, weights: np.ndarray, outdir: str):
     edge_colors = [cmap(norm(w)) for w in weights]
 
     # ─── Create a smaller figure window ─────────────────────────────────────
-    fig = plt.figure(figsize=(6, 4.5), dpi=300)
+    plt.figure(figsize=(6, 4.5), dpi=300)
     manager = plt.get_current_fig_manager()
     try:
         manager.window.wm_geometry("800x600")  # Force window size (pixel) to 800×600
@@ -113,7 +114,8 @@ def plot_bulk_tree_3d(
 ) -> None:
     """
     3D Bulk Tree (True Depth):
-    - Nodes are arranged so that x = depth (Layer (X)), y & z form a grid, scaled by spread_factor.
+    - Nodes arranged with x = depth (Layer (X)); y and z form a grid scaled by
+      spread_factor.
     - Uses a common max_range across x, y, z to center and heavily zoom out.
     - Axis labels: Layer (X), Y Index, Height (Z).
     - Occupies 75% of figure width; colorbar on right occupying ~25%.
@@ -154,13 +156,13 @@ def plot_bulk_tree_3d(
     zs = np.array([pos3d[n][2] for n in tree.nodes])
 
     # 4. Create a smaller figure window
-    fig = plt.figure(figsize=(6, 4.5), dpi=300)
+    _fig = plt.figure(figsize=(6, 4.5), dpi=300)
     manager = plt.get_current_fig_manager()
     try:
         manager.window.wm_geometry("800x600")
     except Exception:
         pass
-    ax = fig.add_subplot(111, projection="3d")
+    ax = _fig.add_subplot(111, projection="3d")
     ax.set_title("3D Bulk Tree (True Depth)", fontsize=16, fontweight="bold")
 
     # 5. Draw nodes (larger, semi-transparent)
@@ -206,7 +208,7 @@ def plot_bulk_tree_3d(
     # 10. Attach a colorbar on the right, explicitly using this ax
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
-    cbar = plt.colorbar(sm, ax=ax, fraction=0.046, pad=0.02, label="Edge Weight")
+    plt.colorbar(sm, ax=ax, fraction=0.046, pad=0.02, label="Edge Weight")
 
     # 11. Adjust view angle for a visually pleasing diagonal perspective
     ax.view_init(elev=25, azim=130)

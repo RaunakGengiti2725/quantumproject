@@ -1,9 +1,10 @@
-import os
 import argparse
+import os
+
 import numpy as np
 
-from quantumproject.utils.tree import BulkTree
 from quantumproject.training.pipeline import run_one_time_step
+from quantumproject.utils.tree import BulkTree
 
 
 def main():
@@ -52,7 +53,9 @@ def main():
     )
 
     H_xxz = make_xxz_hamiltonian(n_qubits, **ham_params)
-    evolve0 = get_time_evolution_qnode(n_qubits=n_qubits, hamiltonian=H_xxz, trotter_steps=20)
+    evolve0 = get_time_evolution_qnode(
+        n_qubits=n_qubits, hamiltonian=H_xxz, trotter_steps=20
+    )
     base_state = evolve0(0.0)
 
     # 4) Sample times between 0 and t_max
@@ -73,7 +76,10 @@ def main():
 
         # 6) Save weights, curvatures, ΔE
         np.save(os.path.join(output_dir, f"weights_t{idx}.npy"), learned_w)
-        np.save(os.path.join(output_dir, f"curvatures_t{idx}.npy"), np.array(list(curvatures.values())))
+        np.save(
+            os.path.join(output_dir, f"curvatures_t{idx}.npy"),
+            np.array(list(curvatures.values())),
+        )
         np.save(os.path.join(output_dir, f"deltaE_t{idx}.npy"), np.array(deltaE))
 
         # 7) Skip t=0
