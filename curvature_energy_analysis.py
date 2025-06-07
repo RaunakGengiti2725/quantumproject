@@ -52,6 +52,7 @@ __all__ = [
     "safe_pearson_correlation",
     "safe_einstein_correlation",
 ]
+
 T = TypeVar("T")
 
 
@@ -65,6 +66,7 @@ def _jit(nopython: bool = True) -> Callable[[Callable[..., T]], Callable[..., T]
 
     def wrapper(fn: Callable[..., T]) -> Callable[..., T]:
         return fn
+
     return wrapper
 
 
@@ -257,6 +259,7 @@ def compute_energy_deltas(
     out = np.zeros(len(nodelist), dtype=np.float64)
     _aggregate_energy(u_idx, v_idx, delta, out)
     return out
+
 if JAX_AVAILABLE:
     safe_pearson_correlation_jax = jax_jit(safe_pearson_correlation)
     safe_einstein_correlation_jax = jax_jit(safe_einstein_correlation)
@@ -268,6 +271,7 @@ if JAX_AVAILABLE:
         "compute_curvature_jax",
         "compute_energy_deltas_jax",
     ]
+
 if __name__ == "__main__":  # pragma: no cover
     parser = argparse.ArgumentParser(description="Benchmark curvature-energy analysis")
     parser.add_argument(
