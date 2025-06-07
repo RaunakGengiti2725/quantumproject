@@ -121,7 +121,7 @@ def safe_pearson_correlation(
         n = len(x)
         if n > 2 and abs(r) < 1:
             t = r * np.sqrt((n - 2)/(1 - r**2))
-            p = 2 * stats.t.sf(abs(t), n - 2)
+            p = 2 * t.sf(abs(t), n - 2)
         else:
             p = 1.0
         return float(r), float(p)
