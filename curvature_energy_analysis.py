@@ -228,4 +228,4 @@ if __name__ == "__main__":  # pragma: no cover
         g[u][v]["delta_energy"] = np.random.randn()
     start = time.time()
     dE = compute_energy_deltas(g)
-    logger.info("%s", f"Energy deltas computed in {time.time()-start:.2f} s")
+    logger.info(f"Energy deltas computed in {time.time()-start:.2f} s")
