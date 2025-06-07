@@ -1,6 +1,12 @@
 import numpy as np
+import pytest
+
+from analysis.geodesic import embed_mds, geodesic_matrix
 from quantumproject.utils.tree import BulkTree
-from analysis.geodesic import geodesic_matrix, embed_mds
+
+pytest.importorskip(
+    "sklearn.manifold", reason="scikit-learn not installed, skipping geodesic tests"
+)
 
 
 def test_geodesic_matrix_simple():
