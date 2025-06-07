@@ -99,33 +99,28 @@ def safe_pearson_correlation(
     Tuple[float, float]
         Correlation coefficient ``r`` and two-tailed p-value ``p``.
     """
-
     x = np.asarray(x, dtype=float).ravel()
     y = np.asarray(y, dtype=float).ravel()
     if x.shape != y.shape:
         raise ValueError("Input arrays must have the same shape")
-
     mask = np.isfinite(x) & np.isfinite(y)
     cleaned = np.count_nonzero(~mask)
     if cleaned:
         logger.debug("Removed %d non-finite entries", cleaned)
     x = x[mask]
     y = y[mask]
-
     if x.size < 2 or y.size < 2:
         logger.warning("Insufficient data for correlation; returning default")
         return 0.0, 1.0
-
     if np.allclose(x, x[0]) or np.allclose(y, y[0]):
         logger.warning("Zero variance detected; returning default")
         return 0.0, 1.0
-
     try:
         r, p = stats.pearsonr(x, y)
         if np.isnan(r) or np.isnan(p):
             raise ValueError("nan result")
         return float(r), float(p)
-    except Exception as exc:  # pragma: no cover - rarely executed
+    except Exception as exc:  # pragma: no cover
         logger.warning("SciPy pearsonr failed (%s); falling back to numpy", exc)
         xm = x - x.mean()
         ym = y - y.mean()
@@ -175,26 +170,9 @@ def safe_einstein_correlation(
     r = cov / (dx.std(ddof=1) * dy.std(ddof=1))
     return float(r)
 
-
 @timed
 def compute_curvature(graph: nx.Graph) -> NDArray[np.floating]:
-    """Vectorized toy curvature estimate for each node.
-
-    Uses a simple combinatorial expression based on node degrees:
-
-    .. math:: k_i = 1 - \frac{d_i}{2} + \sum_{j \in N(i)} \frac{1}{d_j}
-
-    Parameters
-    ----------
-    graph : nx.Graph
-        Input undirected graph.
-
-    Returns
-    -------
-    np.ndarray
-        Array of curvatures ordered by ``graph.nodes()``.
-    """
-
+    """Vectorized toy curvature estimate for each node."""
     nodelist = list(graph.nodes())
     A = nx.to_scipy_sparse_array(
         graph, nodelist=nodelist, weight=None, format="csr", dtype=float
@@ -202,11 +180,10 @@ def compute_curvature(graph: nx.Graph) -> NDArray[np.floating]:
     deg = np.asarray(A.sum(axis=1)).ravel()
     inv_deg = np.divide(1.0, deg, out=np.zeros_like(deg), where=deg != 0)
     neighbor_sum = A.dot(inv_deg)
-    curvature = 1.0 - deg / 2.0 + neighbor_sum
-    return curvature
+    return 1.0 - deg / 2.0 + neighbor_sum
 
 
-@_jit(nopython=True)a
+@_jit(nopython=True)
 def _aggregate_energy(
     edges_u: NDArray[np.int_],
     edges_v: NDArray[np.int_],
@@ -224,34 +201,23 @@ def _aggregate_energy(
 @timed
 def compute_energy_deltas(
     graph: nx.Graph, *, attr: str = "delta_energy"
-) -> NDArray[np.floating]:    """Aggregate energy deltas for each node.
-
-    Parameters
-    ----------
-    graph : nx.Graph
-        Graph with per-edge ``attr`` values representing energy change.
-    attr : str, optional
-        Edge attribute storing the energy delta.
-        Defaults to ``"delta_energy"``.
-
-    Returns
-    -------
-    np.ndarray
-        Sum of energy deltas incident to each node.
-    """
-
+) -> NDArray[np.floating]:
+    """Aggregate energy deltas for each node."""
     nodelist = list(graph.nodes())
     index = {n: i for i, n in enumerate(nodelist)}
     edges = list(graph.edges(data=True))
+
     m = len(edges)
-    u_idx = np.empty(m, dtype=np.int64)
-    v_idx = np.empty(m, dtype=np.int64)
-    delta = np.empty(m, dtype=np.float64)
+    u_idx = np.empty(m, dtype=np.int_)
+    v_idx = np.empty(m, dtype=np.int_)
+    delta = np.empty(m, dtype=np.floating)
+
     for i, (u, v, d) in enumerate(edges):
         u_idx[i] = index[u]
         v_idx[i] = index[v]
         delta[i] = float(d.get(attr, 0.0))
-    out = np.zeros(len(nodelist), dtype=np.float64)
+
+    out = np.zeros(len(nodelist), dtype=np.floating)
     _aggregate_energy(u_idx, v_idx, delta, out)
     return out
 
@@ -272,10 +238,7 @@ if JAX_AVAILABLE:
 if __name__ == "__main__":  # pragma: no cover
     parser = argparse.ArgumentParser(description="Benchmark curvature-energy analysis")
     parser.add_argument(
-        "--nodes",
-        type=int,
-        default=1_000_000,
-        help="Number of nodes in the random graph",
+        "--nodes", type=int, default=1_000_000, help="Number of nodes in the random graph"
     )
     parser.add_argument("--p", type=float, default=1e-6, help="Edge probability")
     args = parser.parse_args()
@@ -286,7 +249,7 @@ if __name__ == "__main__":  # pragma: no cover
     g = nx.fast_gnp_random_graph(args.nodes, args.p, seed=42)
     logger.info("Graph generated in %.2f s", time.time() - start)
 
-    timings = {}
+    timings: dict[str, float] = {}
 
     start = time.time()
     curv = compute_curvature(g)
