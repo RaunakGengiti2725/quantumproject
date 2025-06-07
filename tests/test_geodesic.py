@@ -1,6 +1,7 @@
 import numpy as np
+
+from analysis.geodesic import embed_mds, geodesic_matrix
 from quantumproject.utils.tree import BulkTree
-from analysis.geodesic import geodesic_matrix, embed_mds
 
 
 def test_geodesic_matrix_simple():

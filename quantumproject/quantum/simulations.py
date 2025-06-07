@@ -1,8 +1,9 @@
 # File: quantumproject/quantum/simulations.py
+# mypy: ignore-errors
 
 import numpy as np
-import pennylane as qml
-from pennylane import numpy as pnp
+import pennylane as qml  # type: ignore[import]
+from pennylane import numpy as pnp  # type: ignore[import]
 
 # ───────────────────────────────
 # 1) TIME EVOLUTION QNODE
@@ -12,6 +13,7 @@ from pennylane import numpy as pnp
 # so here we define a “placeholder” device. The actual device should be created
 # in the training pipeline when needed (e.g., with 5 Trotter steps).
 dev_placeholder = None
+
 
 @qml.qnode(qml.device("default.qubit", wires=1), interface="autograd")
 def time_evolved_state(t):
@@ -27,6 +29,7 @@ def time_evolved_state(t):
 # ───────────────────────────────
 # 2) HAMILTONIAN BUILDERS
 # ───────────────────────────────
+
 
 def make_tfim_hamiltonian(n, J=1.0, h=1.0):
     """
@@ -88,6 +91,7 @@ def make_xxz_hamiltonian(n, Jx=1.0, Jy=1.0, Jz=1.0, h=0.0):
 # 3) CONTIGUOUS INTERVAL ENUMERATION
 # ───────────────────────────────
 
+
 def contiguous_intervals(n_qubits, max_interval_size=None):
     """
     Return a list of all contiguous intervals of boundary qubits [0..n_qubits-1].
@@ -105,6 +109,7 @@ def contiguous_intervals(n_qubits, max_interval_size=None):
 # ───────────────────────────────
 # 4) VON NEUMANN ENTROPY
 # ───────────────────────────────
+
 
 def reduced_density_matrix(state, subsys):
     """
@@ -139,6 +144,7 @@ def von_neumann_entropy(state, subsys):
 # ───────────────────────────────
 # 5) REDEFINE time_evolved_state ON THE FLY
 # ───────────────────────────────
+
 
 def get_time_evolution_qnode(n_qubits, hamiltonian, trotter_steps=1):
     """
