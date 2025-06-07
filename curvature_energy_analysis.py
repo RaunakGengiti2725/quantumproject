@@ -138,7 +138,7 @@ def safe_pearson_correlation(
         r = r_num / r_den
         n = len(x)
         if n > 2 and abs(r) < 1:
-            t = r * np.sqrt((n - 2) / (1 - r**2))
+            t = r * np.sqrt((n - 2)/(1 - r**2))
             p = 2 * stats.t.sf(abs(t), n - 2)
         else:
             p = 1.0
@@ -281,7 +281,8 @@ if __name__ == "__main__":  # pragma: no cover
         default=1_000_000,
         help="Number of nodes in the random graph",
     )
-    parser.add_argument("--p", type=float, default=1e-6, help="Edge probability")
+
+    parser.add_argument("--p", type=float, default=0.000001, help="Edge probability")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(message)s")
