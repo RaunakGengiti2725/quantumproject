@@ -206,7 +206,7 @@ if __name__ == "__main__":  # pragma: no cover
     parser.add_argument(
         "--p",
         type=float,
-        default=1e-6,
+        default=0.000001,
         help="Edge probability"
     )
     args = parser.parse_args()
