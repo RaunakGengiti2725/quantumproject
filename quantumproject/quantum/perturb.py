@@ -2,19 +2,26 @@
 
 from __future__ import annotations
 
-import torch
 import os
-import numpy as np
 from typing import Iterable
 
+import numpy as np
 import pennylane as qml
+import torch
 
-from .simulations import Simulator, contiguous_intervals, von_neumann_entropy, boundary_energy_delta
-from ..utils.tree import BulkTree
 from ..training.pipeline import train_step
+from ..utils.tree import BulkTree
+from .simulations import (
+    Simulator,
+    boundary_energy_delta,
+    contiguous_intervals,
+    von_neumann_entropy,
+)
 
 
-def _apply_perturbation(dev: qml.Device, qubits: Iterable[int], angle: float, kind: str) -> None:
+def _apply_perturbation(
+    dev: qml.Device, qubits: Iterable[int], angle: float, kind: str
+) -> None:
     """Apply a perturbation gate to the given device wires."""
     for q in qubits:
         if kind.lower() == "x":
@@ -43,7 +50,9 @@ def perturb_and_compare(
     intervals = contiguous_intervals(n_qubits)
     ent_base = np.array([von_neumann_entropy(state_base, r) for r in intervals])
     tree = BulkTree(n_qubits)
-    weights_base = train_step(torch.tensor(ent_base, dtype=torch.float32), tree, steps=50)
+    weights_base = train_step(
+        torch.tensor(ent_base, dtype=torch.float32), tree, steps=50
+    )
     curv_base = tree.compute_curvatures(weights_base.numpy())
     dE_base = boundary_energy_delta(sim.time_evolved_state(H, 0.0), state_base)
 
@@ -58,14 +67,15 @@ def perturb_and_compare(
 
     state_pert = perturbed_circuit()
     ent_pert = np.array([von_neumann_entropy(state_pert, r) for r in intervals])
-    weights_pert = train_step(torch.tensor(ent_pert, dtype=torch.float32), tree, steps=50)
+    weights_pert = train_step(
+        torch.tensor(ent_pert, dtype=torch.float32), tree, steps=50
+    )
     curv_pert = tree.compute_curvatures(weights_pert.numpy())
     dE_pert = boundary_energy_delta(sim.time_evolved_state(H, 0.0), state_pert)
 
     delta_S = ent_pert - ent_base
     delta_kappa = np.array([curv_pert[k] - curv_base[k] for k in curv_base])
     delta_E = np.array(dE_pert) - np.array(dE_base)
-
 
     if np.std(ent_base) > 1e-8:
         corr_before = np.corrcoef(ent_base)
@@ -76,7 +86,7 @@ def perturb_and_compare(
         corr_after = np.corrcoef(ent_pert)
     else:
         corr_after = np.zeros((1, 1))
-        
+
     np.save(os.path.join(outdir, "delta_entropy.npy"), delta_S)
     np.save(os.path.join(outdir, "delta_curvature.npy"), delta_kappa)
     np.save(os.path.join(outdir, "delta_energy.npy"), delta_E)
@@ -90,6 +100,7 @@ def perturb_and_compare(
         "corr_before": corr_before,
         "corr_after": corr_after,
     }
+
 
 def perturb_time_series(
     n_qubits: int,
@@ -111,7 +122,9 @@ def perturb_time_series(
     for t in times:
         state_t = sim.time_evolved_state(H, t)
         ent_base = np.array([von_neumann_entropy(state_t, r) for r in intervals])
-        weights_base = train_step(torch.tensor(ent_base, dtype=torch.float32), tree, steps=50)
+        weights_base = train_step(
+            torch.tensor(ent_base, dtype=torch.float32), tree, steps=50
+        )
         curv_base = tree.compute_curvatures(weights_base.numpy())
         dE_base = boundary_energy_delta(base_state0, state_t)
         base_series.append((ent_base, curv_base, dE_base))
@@ -132,11 +145,15 @@ def perturb_time_series(
         pert_series.append((ent_pert, curv_pert, dE_pert))
 
     delta_entropy = np.stack([p[0] - b[0] for b, p in zip(base_series, pert_series)])
-    delta_energy = np.stack([np.array(p[2]) - np.array(b[2]) for b, p in zip(base_series, pert_series)])
-    delta_curv = np.stack([
-        np.array([p[1][k] - b[1][k] for k in b[1]])
-        for b, p in zip(base_series, pert_series)
-    ])
+    delta_energy = np.stack(
+        [np.array(p[2]) - np.array(b[2]) for b, p in zip(base_series, pert_series)]
+    )
+    delta_curv = np.stack(
+        [
+            np.array([p[1][k] - b[1][k] for k in b[1]])
+            for b, p in zip(base_series, pert_series)
+        ]
+    )
 
     return {
         "delta_entropy": delta_entropy,
