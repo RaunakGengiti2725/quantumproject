@@ -1,4 +1,5 @@
 import pytest
+
 from quantumproject.utils.tree import BulkTree
 
 

@@ -1,22 +1,16 @@
-import os
 import argparse
+import os
+
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import matplotlib.pyplot as plt
-plt.style.use("seaborn-v0_8-whitegrid")
-plt.rcParams.update({
-    "font.family": "serif",
-    "font.size": 11,
-    "figure.dpi": 300,
-    "savefig.dpi": 300,
-})
 from scipy.stats import pearsonr, spearmanr, zscore
 
 from quantumproject.quantum.simulations import (
     Simulator,
+    boundary_energy_delta,
     contiguous_intervals,
     von_neumann_entropy,
-    boundary_energy_delta,
 )
 from quantumproject.training.pipeline import train_step
 from quantumproject.utils.tree import BulkTree
@@ -25,6 +19,16 @@ from quantumproject.visualization.plots import (
     plot_bulk_tree_3d,
     plot_entropy_over_time,
     plot_weight_comparison,
+)
+
+plt.style.use("seaborn-v0_8-whitegrid")
+plt.rcParams.update(
+    {
+        "font.family": "serif",
+        "font.size": 11,
+        "figure.dpi": 300,
+        "savefig.dpi": 300,
+    }
 )
 
 
@@ -46,8 +50,12 @@ def main() -> None:
         help="Maximum interval length to use when training",
     )
     parser.add_argument("--steps", type=int, default=16, help="Number of time steps")
-    parser.add_argument("--t_max", type=float, default=np.pi, help="Maximum evolution time")
-    parser.add_argument("--outdir", default="figures", help="Output directory for figures")
+    parser.add_argument(
+        "--t_max", type=float, default=np.pi, help="Maximum evolution time"
+    )
+    parser.add_argument(
+        "--outdir", default="figures", help="Output directory for figures"
+    )
     parser.add_argument(
         "--inject_noise",
         action="store_true",
@@ -130,9 +138,11 @@ def main() -> None:
             spearman_corrs.append(r_spearman)
 
             plt.figure(figsize=(5, 4), dpi=300)
-            plt.scatter(x_vals, y_vals, c=y_vals, cmap="viridis", alpha=0.8, edgecolors="k")
-            plt.xlabel("Curvature", fontsize=12, fontweight='bold')
-            plt.ylabel("ΔE sum", fontsize=12, fontweight='bold')
+            plt.scatter(
+                x_vals, y_vals, c=y_vals, cmap="viridis", alpha=0.8, edgecolors="k"
+            )
+            plt.xlabel("Curvature", fontsize=12, fontweight="bold")
+            plt.ylabel("ΔE sum", fontsize=12, fontweight="bold")
             plt.title(f"ΔE vs Curvature at t = {t:.2f}", fontsize=14)
             plt.colorbar(label="ΔE sum")
             plt.tight_layout()
@@ -144,9 +154,17 @@ def main() -> None:
             spearman_corrs.append(0.0)
 
             plt.figure(figsize=(5, 4), dpi=300)
-            plt.text(0.5, 0.5, "Flat Data", ha="center", va="center", fontsize=12, color="gray")
-            plt.xlabel("Curvature", fontsize=12, fontweight='bold')
-            plt.ylabel("ΔE sum", fontsize=12, fontweight='bold')
+            plt.text(
+                0.5,
+                0.5,
+                "Flat Data",
+                ha="center",
+                va="center",
+                fontsize=12,
+                color="gray",
+            )
+            plt.xlabel("Curvature", fontsize=12, fontweight="bold")
+            plt.ylabel("ΔE sum", fontsize=12, fontweight="bold")
             plt.title(f"ΔE vs Curvature at t = {t:.2f}", fontsize=14)
             plt.tight_layout()
             plt.savefig(os.path.join(args.outdir, f"scatter_t_{t:.2f}.png"))
@@ -165,20 +183,38 @@ def main() -> None:
         extent=[times[0], times[-1], 0, args.n_qubits],
     )
     plt.colorbar(label="ΔE")
-    plt.xlabel("Time", fontsize=12, fontweight='bold')
-    plt.ylabel("Qubit index", fontsize=12, fontweight='bold')
+    plt.xlabel("Time", fontsize=12, fontweight="bold")
+    plt.ylabel("Qubit index", fontsize=12, fontweight="bold")
     plt.title("ΔE spread over time", fontsize=14)
     plt.tight_layout()
     plt.savefig(os.path.join(args.outdir, "delta_E_heatmap.png"))
     plt.close()
 
     plt.figure(figsize=(8, 5), dpi=300)
-    plt.plot(times, pearson_corrs, marker="o", linestyle="--", linewidth=2, label="Pearson", color="#1f77b4")
-    plt.plot(times, spearman_corrs, marker="s", linestyle="-", linewidth=2, label="Spearman", color="#ff7f0e")
+    plt.plot(
+        times,
+        pearson_corrs,
+        marker="o",
+        linestyle="--",
+        linewidth=2,
+        label="Pearson",
+        color="#1f77b4",
+    )
+    plt.plot(
+        times,
+        spearman_corrs,
+        marker="s",
+        linestyle="-",
+        linewidth=2,
+        label="Spearman",
+        color="#ff7f0e",
+    )
     plt.axhline(0, color="gray", linestyle=":", linewidth=0.8)
-    plt.title("Einstein Correlation: Pearson vs Spearman", fontsize=16, fontweight='bold')
-    plt.xlabel("Time", fontsize=12, fontweight='bold')
-    plt.ylabel("Correlation (r)", fontsize=12, fontweight='bold')
+    plt.title(
+        "Einstein Correlation: Pearson vs Spearman", fontsize=16, fontweight="bold"
+    )
+    plt.xlabel("Time", fontsize=12, fontweight="bold")
+    plt.ylabel("Correlation (r)", fontsize=12, fontweight="bold")
     plt.legend(fontsize=10, framealpha=0.9)
     plt.grid(True, linestyle="--", linewidth=0.5, alpha=0.7)
     plt.tight_layout()
