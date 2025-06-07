@@ -1,35 +1,84 @@
-"""High-performance curvature and energy analysis utilities."""
+"""High-performance curvature and energy analysis utilities.
 
+This module offers robust correlation routines and fast aggregation of
+curvature and energy metrics on large graphs. It automatically detects GPU and
+JAX backends when available and logs timing information for each public
+function.
+"""
 from __future__ import annotations
 
 import argparse
 import logging
 import time
-from typing import Tuple
+from functools import wraps
+from typing import Any, Callable, Tuple, TypeVar, cast
 
+import networkx as nx  # type: ignore[import-untyped]
 import numpy as np
-import networkx as nx
-from scipy import stats
+from numpy.typing import NDArray
+from scipy import stats  # type: ignore[import-untyped]
 
 try:
-    from numba import jit
-
-    def _jit(nopython=True):
-        return jit(nopython=nopython)
+    from numba import jit  # type: ignore[import-not-found]
 
     NUMBA_AVAILABLE = True
 except Exception:  # pragma: no cover - numba not installed
-    def _jit(nopython=True):
-        def wrapper(fn):
-            return fn
-        return wrapper
-
+    jit = None  # type: ignore
     NUMBA_AVAILABLE = False
 
+try:
+    import cupy as cp  # type: ignore[import-not-found]
+    xp = cp
+    BACKEND = "cupy"
+except Exception:  # pragma: no cover
+    xp = np
+    BACKEND = "numpy"
+
+try:
+    from jax import jit as jax_jit  # type: ignore[import-not-found]
+    JAX_AVAILABLE = True
+except Exception:  # pragma: no cover
+    jax_jit = None  # type: ignore
+    JAX_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
+__all__ = [
+    "compute_curvature",
+    "compute_energy_deltas",
+    "safe_pearson_correlation",
+    "safe_einstein_correlation",
+]
+
+T = TypeVar("T")
 
 
-def safe_pearson_correlation(x: np.ndarray, y: np.ndarray) -> Tuple[float, float]:
+def _jit(nopython: bool = True) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """Return a Numba ``jit`` decorator if available."""
+    if NUMBA_AVAILABLE and jit is not None:
+        return cast(Callable[[Callable[..., T]], Callable[..., T]], jit(nopython=nopython))
+
+    def wrapper(fn: Callable[..., T]) -> Callable[..., T]:
+        return fn
+
+    return wrapper
+
+
+def timed(fn: Callable[..., T]) -> Callable[..., T]:
+    """Decorator that logs the execution time of ``fn``."""
+    @wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> T:
+        start = time.time()
+        result = fn(*args, **kwargs)
+        duration = time.time() - start
+        logger.info("%s executed in %.4f s", fn.__name__, duration)
+        return result
+    return wrapper
+
+
+@timed
+def safe_pearson_correlation(
+    x: NDArray[np.floating], y: NDArray[np.floating]
+) -> Tuple[float, float]:
     """Return Pearson correlation of ``x`` and ``y`` with robust handling."""
     x = np.asarray(x, dtype=float).ravel()
     y = np.asarray(y, dtype=float).ravel()
@@ -70,9 +119,37 @@ def safe_pearson_correlation(x: np.ndarray, y: np.ndarray) -> Tuple[float, float
         return float(r), float(p)
 
 
+@timed
+def safe_einstein_correlation(
+    x: NDArray[np.floating], y: NDArray[np.floating]
+) -> float:
+    """Return correlation coefficient using Einstein summation."""
+    x = np.asarray(x, dtype=float).ravel()
+    y = np.asarray(y, dtype=float).ravel()
+    if x.shape != y.shape:
+        raise ValueError("Input arrays must have the same shape")
+    mask = np.isfinite(x) & np.isfinite(y)
+    cleaned = np.count_nonzero(~mask)
+    if cleaned:
+        logger.debug("Removed %d non-finite entries", cleaned)
+    x = x[mask]
+    y = y[mask]
+    if x.size < 2 or np.allclose(x, x[0]) or np.allclose(y, y[0]):
+        logger.warning("Insufficient data for correlation; returning default")
+        return 0.0
+    dx = x - x.mean()
+    dy = y - y.mean()
+    cov = np.einsum("i,i->", dx, dy) / (dx.size - 1)
+    r = cov / (dx.std(ddof=1) * dy.std(ddof=1))
+    return float(r)
+
+
 @_jit(nopython=True)
 def _aggregate_energy(
-    edges_u: np.ndarray, edges_v: np.ndarray, deltas: np.ndarray, out: np.ndarray
+    edges_u: NDArray[np.int_],
+    edges_v: NDArray[np.int_],
+    deltas: NDArray[np.floating],
+    out: NDArray[np.floating],
 ) -> None:
     for i in range(edges_u.shape[0]):
         u = edges_u[i]
@@ -82,7 +159,8 @@ def _aggregate_energy(
         out[v] += d
 
 
-def compute_curvature(graph: nx.Graph) -> np.ndarray:
+@timed
+def compute_curvature(graph: nx.Graph) -> NDArray[np.floating]:
     """Vectorized toy curvature estimate for each node."""
     nodelist = list(graph.nodes())
     A = nx.to_scipy_sparse_array(
@@ -94,7 +172,10 @@ def compute_curvature(graph: nx.Graph) -> np.ndarray:
     return 1.0 - deg / 2.0 + neighbor_sum
 
 
-def compute_energy_deltas(graph: nx.Graph, *, attr: str = "delta_energy") -> np.ndarray:
+@timed
+def compute_energy_deltas(
+    graph: nx.Graph, *, attr: str = "delta_energy"
+) -> NDArray[np.floating]:
     """Aggregate energy deltas for each node."""
     nodelist = list(graph.nodes())
     index = {n: i for i, n in enumerate(nodelist)}
@@ -122,7 +203,12 @@ if __name__ == "__main__":  # pragma: no cover
         default=1_000_000,
         help="Number of nodes in the random graph",
     )
-    parser.add_argument("--p", type=float, default=1e-6, help="Edge probability")
+    parser.add_argument(
+        "--p",
+        type=float,
+        default=1e-6,
+        help="Edge probability"
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(message)s")
@@ -139,8 +225,4 @@ if __name__ == "__main__":  # pragma: no cover
         g[u][v]["delta_energy"] = np.random.randn()
     start = time.time()
     dE = compute_energy_deltas(g)
-    logger.info("Energy deltas computed in %.2f s", time.time() - start)
-
-    start = time.time()
-    r, p = safe_pearson_correlation(curv, dE)
-    logger.info("Correlation: r=%.5f p=%.5f (%.2f s)", r, p, time.time() - start)
+    logger.info("%s", f"Energy deltas computed in {time.time()-start:.2f} s")
