@@ -211,8 +211,10 @@ if __name__ == "__main__":  # pragma: no cover
     )
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO,
-                        format="%(levelname)s:%(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s:%(message)s"
+    )
     logger.info("Generating random graph with %d nodes", args.nodes)
     start = time.time()
     g = nx.fast_gnp_random_graph(args.nodes, args.p, seed=42)
