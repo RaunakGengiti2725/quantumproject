@@ -58,12 +58,15 @@ __all__ = [
 T = TypeVar("T")
 
 
-def _jit(nopython: bool = True) -> Callable[[Callable[..., T]], Callable[..., T]]:
+def _jit(nopython: bool = True) -> (
+    Callable[[Callable[..., T]], Callable[..., T]]
+):
     """Return a Numba ``jit`` decorator if available."""
 
     if NUMBA_AVAILABLE and jit is not None:
         return cast(
-            Callable[[Callable[..., T]], Callable[..., T]], jit(nopython=nopython)
+            Callable[[Callable[..., T]], Callable[..., T]],
+            jit(nopython=nopython)
         )
 
     def wrapper(fn: Callable[..., T]) -> Callable[..., T]:
@@ -127,8 +130,11 @@ def safe_pearson_correlation(
         if np.isnan(r) or np.isnan(p):
             raise ValueError("nan result")
         return float(r), float(p)
-    except Exception as exc:  # pragma: no cover - rarely executed
-        logger.warning("SciPy pearsonr failed (%s); falling back to numpy", exc)
+    except Exception as exc:  # pragma: no cover
+        logger.warning(
+            "SciPy pearsonr failed (%s); falling back to numpy",
+            exc
+        )
         xm = x - x.mean()
         ym = y - y.mean()
         r_num = np.dot(xm, ym)
