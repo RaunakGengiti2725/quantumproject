@@ -12,17 +12,17 @@ def binary_tree(n_leaves: int) -> nx.Graph:
     def build_subtree(num_leaves: int):
         if num_leaves == 1:
             name = f"q{counter['leaf_idx']}"
-            counter['leaf_idx'] += 1
+            counter["leaf_idx"] += 1
             tree.add_node(name)
             return name
         left = num_leaves // 2
         right = num_leaves - left
-        l = build_subtree(left)
+        left_sub = build_subtree(left)
         r = build_subtree(right)
         node = f"v{counter['internal_idx']}"
-        counter['internal_idx'] += 1
+        counter["internal_idx"] += 1
         tree.add_node(node)
-        tree.add_edge(node, l)
+        tree.add_edge(node, left_sub)
         tree.add_edge(node, r)
         return node
 
@@ -37,13 +37,13 @@ def ternary_tree(n_leaves: int) -> nx.Graph:
     def build(num: int):
         if num <= 1:
             name = f"q{counter['leaf_idx']}"
-            counter['leaf_idx'] += 1
+            counter["leaf_idx"] += 1
             tree.add_node(name)
             return name
         split = [num // 3, num // 3, num - 2 * (num // 3)]
         children = [build(s) for s in split if s > 0]
         node = f"v{counter['internal_idx']}"
-        counter['internal_idx'] += 1
+        counter["internal_idx"] += 1
         tree.add_node(node)
         for c in children:
             tree.add_edge(node, c)

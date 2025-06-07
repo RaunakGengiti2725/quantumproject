@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import numpy as np
-import networkx as nx
 from typing import Iterable
+
+import networkx as nx
+import numpy as np
 from sklearn.manifold import MDS
 
 from quantumproject.utils.tree import BulkTree
@@ -25,8 +26,14 @@ def geodesic_matrix(tree: BulkTree, weights: Iterable[float]) -> np.ndarray:
     return dist
 
 
-def embed_mds(dist: np.ndarray, n_components: int = 2, random_state: int = 0) -> np.ndarray:
+def embed_mds(
+    dist: np.ndarray, n_components: int = 2, random_state: int = 0
+) -> np.ndarray:
     """Embed distance matrix using multidimensional scaling."""
-    mds = MDS(n_components=n_components, dissimilarity="precomputed", random_state=random_state)
+    mds = MDS(
+        n_components=n_components,
+        dissimilarity="precomputed",
+        random_state=random_state,
+    )
     coords = mds.fit_transform(dist)
     return coords

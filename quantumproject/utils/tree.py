@@ -1,5 +1,6 @@
-import networkx as nx
 from collections import deque
+
+import networkx as nx
 
 
 class BulkTree:
@@ -11,13 +12,16 @@ class BulkTree:
     def __init__(self, n_qubits: int):
         self.n_qubits = n_qubits
         self.tree = nx.Graph()
-        self.leaf_nodes_list = []           # Will store names of leaves: "q0", "q1", ...
-        self._build_balanced_binary_tree()  # Build the tree and populate leaf_nodes_list
+        self.leaf_nodes_list = []  # Will store names of leaves: "q0", "q1", ...
+        # Build the tree and populate leaf_nodes_list
+        self._build_balanced_binary_tree()
         # Now expose the list of edges in a plain attribute (for GNN usage)
         self.edge_list = list(self.tree.edges)
         # Map each undirected edge to a unique index for convenience
         self.edge_to_index = {e: i for i, e in enumerate(self.edge_list)}
-        self.edge_to_index.update({(v, u): i for (u, v), i in self.edge_to_index.items()})
+        self.edge_to_index.update(
+            {(v, u): i for (u, v), i in self.edge_to_index.items()}
+        )
 
     def _build_balanced_binary_tree(self):
         """
@@ -55,9 +59,9 @@ class BulkTree:
         build_subtree(self.n_qubits)
 
         # Verify correct number of leaves
-        assert len(self.leaf_nodes_list) == self.n_qubits, (
-            f"Expected {self.n_qubits} leaves, got {len(self.leaf_nodes_list)}"
-        )
+        assert (
+            len(self.leaf_nodes_list) == self.n_qubits
+        ), f"Expected {self.n_qubits} leaves, got {len(self.leaf_nodes_list)}"
 
     def leaf_nodes(self) -> list[str]:
         """
@@ -66,10 +70,7 @@ class BulkTree:
         return list(self.leaf_nodes_list)
 
     def leaf_descendants(self) -> dict[str, list[str]]:
-        """
-        For each internal (non-leaf) node, return the list of leaf-node names reachable from it.
-        Only includes nodes whose degree > 1.
-        """
+        """Return descendant leaves for each internal node."""
         descendants = {}
         all_leaves = set(self.leaf_nodes_list)
 
@@ -158,7 +159,6 @@ class BulkTree:
 
             if len(components) != 2:
                 continue
-
 
             leaf_components = [
                 {n for n in comp if n in self.leaf_nodes_list} for comp in components

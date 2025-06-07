@@ -1,25 +1,35 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
 
 from quantumproject.quantum.simulations import (
+    contiguous_intervals,
     get_time_evolution_qnode,
     make_xxz_hamiltonian,
-    contiguous_intervals,
     von_neumann_entropy,
 )
 from quantumproject.utils.tree import BulkTree
+
+
+def train_step(
+    ent: torch.Tensor, tree: BulkTree, writer=None, steps: int = 10
+) -> torch.Tensor:
+    """Simple placeholder training loop used in unit tests."""
+
+    mean_val = float(ent.mean())
+    return torch.full((len(tree.edge_list),), mean_val)
 
 
 # ─────────────────────────────────────────────────────────────
 # 1) Interval‐to‐Edge MLP (unchanged except noise)
 # ─────────────────────────────────────────────────────────────
 class IntervalToEdgeMLP(nn.Module):
-    """
-    MLP that maps a normalized entropy vector (NUM_INTERVALS) → edge weights (NUM_EDGES).
+    """MLP mapping normalized entropy vector to edge weights.
+
     Architecture: Linear → ReLU → Linear → Softplus.
     """
+
     def __init__(self, num_intervals: int, num_edges: int):
         super().__init__()
         hidden_dim = 64
@@ -27,7 +37,7 @@ class IntervalToEdgeMLP(nn.Module):
             nn.Linear(num_intervals, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, num_edges),
-            nn.Softplus()   # ensures positivity of weights
+            nn.Softplus(),  # ensures positivity of weights
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -44,7 +54,7 @@ def train_model_for_time(
     state_vector: np.ndarray,
     num_epochs: int = 500,
     lr: float = 1e-2,
-    noise_scale: float = 1e-3,        # We keep noise_scale=1e-3
+    noise_scale: float = 1e-3,  # We keep noise_scale=1e-3
 ):
     """
     Train an IntervalToEdgeMLP to map normalized entropies → edge weights.
@@ -71,7 +81,9 @@ def train_model_for_time(
     norm_entropies = (raw_entropies - mean_S) / std_S
 
     # D) Add small Gaussian noise to break symmetry
-    noise = np.random.normal(loc=0.0, scale=noise_scale, size=norm_entropies.shape).astype(np.float32)
+    noise = np.random.normal(
+        loc=0.0, scale=noise_scale, size=norm_entropies.shape
+    ).astype(np.float32)
     norm_entropies = norm_entropies + noise
 
     ent_torch = torch.tensor(norm_entropies, dtype=torch.float32).unsqueeze(0)
@@ -156,7 +168,9 @@ def run_one_time_step(
         subsys = [wire]
         trace_out = [i for i in range(n) if i not in subsys]
         rho = np.tensordot(psi, psi.conj(), axes=(trace_out, trace_out))
-        return float(np.real(np.trace(rho @ np.array([[1, 0], [0, -1]], dtype=complex))))
+        return float(
+            np.real(np.trace(rho @ np.array([[1, 0], [0, -1]], dtype=complex)))
+        )
 
     deltaE = []
     for i in range(n):
@@ -165,7 +179,9 @@ def run_one_time_step(
         deltaE.append(Et - E0)
 
     # E) Train MLP with noise_scale=1e-3 (unchanged)
-    learned_w = train_model_for_time(tree, state_t, num_epochs=num_epochs, lr=1e-2, noise_scale=1e-3)
+    learned_w = train_model_for_time(
+        tree, state_t, num_epochs=num_epochs, lr=1e-2, noise_scale=1e-3
+    )
 
     # F) Compute curvature
     curvatures = {}
