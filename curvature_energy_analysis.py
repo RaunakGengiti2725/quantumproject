@@ -16,7 +16,7 @@ from typing import Any, Callable, Tuple, TypeVar, cast
 import networkx as nx  # type: ignore[import-untyped]
 import numpy as np
 from numpy.typing import NDArray
-from scipy.stats import t  # type: ignore[import-untyped]
+from scipy import stats  # type: ignore[import-untyped]
 
 try:
     from numba import jit  # type: ignore[import-not-found]
@@ -121,7 +121,7 @@ def safe_pearson_correlation(
         n = len(x)
         if n > 2 and abs(r) < 1:
             t = r * np.sqrt((n - 2)/(1 - r**2))
-            p = 2 * t.sf(abs(t), n - 2)
+            p = 2 * stats.t.sf(abs(t), n - 2)
         else:
             p = 1.0
         return float(r), float(p)
@@ -159,6 +159,7 @@ def _aggregate_energy(
     deltas: NDArray[np.floating],
     out: NDArray[np.floating],
 ) -> None:
+    
     for i in range(edges_u.shape[0]):
         u = edges_u[i]
         v = edges_v[i]
