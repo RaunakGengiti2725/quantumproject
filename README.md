@@ -44,3 +44,60 @@ Simple unit tests for entropy computation and GNN training are located in `tests
 - `quantum.perturb.perturb_time_series` visualizes causal propagation of boundary perturbations.
 - `models.quantum_gnn.HybridQuantumGNN` provides a quantum–classical predictor.
 - `utils.graph_topologies` and `utils.bulk_graph` support custom bulk graphs beyond the default binary tree.
+
+## Curvature & Energy Analysis
+The module `curvature_energy_analysis.py` provides utilities to study how local
+curvature relates to boundary energy shifts on very large graphs.
+
+### Installation
+Install Python dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+### API
+```python
+from curvature_energy_analysis import (
+    compute_curvature,
+    compute_energy_deltas,
+    safe_pearson_correlation,
+    safe_einstein_correlation,
+)
+```
+- `compute_curvature(graph)` – return per-node scalar curvature as a NumPy array.
+- `compute_energy_deltas(graph, attr="delta_energy")` – sum edge energy deltas
+  touching each node.
+- `safe_pearson_correlation(x, y)` – correlation with cleaning and robust
+  fallback returning `(r, p)`.
+- `safe_einstein_correlation(x, y)` – fast einsum-based correlation returning
+  only `r`.
+
+### Example
+```python
+import networkx as nx
+from curvature_energy_analysis import (
+    compute_curvature,
+    compute_energy_deltas,
+    safe_pearson_correlation,
+    safe_einstein_correlation,
+)
+
+g = nx.path_graph(8)
+for u, v in g.edges():
+    g[u][v]["delta_energy"] = 0.5
+curv = compute_curvature(g)
+delta = compute_energy_deltas(g)
+r, p = safe_pearson_correlation(curv, delta)
+r_e = safe_einstein_correlation(curv, delta)
+print(r, p, r_e)
+```
+
+### Benchmark
+Run the built-in benchmark on a synthetic graph:
+```bash
+python curvature_energy_analysis.py --nodes 100000 --p 1e-5
+```
+The script reports timings for curvature computation, energy aggregation, and
+correlation evaluation. It prints a small Markdown table summarizing the timing
+for each step. On a modern workstation the analysis on a 100k-node graph
+finishes in a few seconds.
