@@ -5,7 +5,6 @@ curvature and energy metrics on large graphs. It automatically detects GPU and
 JAX backends when available and logs timing information for each public
 function.
 """
-
 from __future__ import annotations
 
 import argparse
@@ -53,7 +52,6 @@ __all__ = [
     "safe_pearson_correlation",
     "safe_einstein_correlation",
 ]
-
 
 T = TypeVar("T")
 
@@ -151,12 +149,14 @@ def safe_pearson_correlation(
 def safe_einstein_correlation(
     x: NDArray[np.floating], y: NDArray[np.floating]
 ) -> float:
+
     """Return correlation coefficient using Einstein summation.
 
     This function mirrors :func:`safe_pearson_correlation` but computes the
     covariance and correlation coefficient via ``np.einsum``. Only the
     correlation ``r`` is returned.
     """
+
 
     x = np.asarray(x, dtype=float).ravel()
     y = np.asarray(y, dtype=float).ravel()
@@ -179,7 +179,6 @@ def safe_einstein_correlation(
     cov = np.einsum("i,i->", dx, dy) / (dx.size - 1)
     r = cov / (dx.std(ddof=1) * dy.std(ddof=1))
     return float(r)
-
 
 @timed
 def compute_curvature(graph: nx.Graph) -> NDArray[np.floating]:
