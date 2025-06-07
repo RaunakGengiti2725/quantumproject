@@ -88,6 +88,7 @@ for u, v in g.edges():
 curv = compute_curvature(g)
 delta = compute_energy_deltas(g)
 r, p = safe_pearson_correlation(curv, delta)
+
 r_e = safe_einstein_correlation(curv, delta)
 print(r, p, r_e)
 ```

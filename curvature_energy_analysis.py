@@ -6,6 +6,7 @@ JAX backends when available and logs timing information for each public
 function.
 """
 
+
 from __future__ import annotations
 
 import argparse
@@ -53,7 +54,6 @@ __all__ = [
     "safe_pearson_correlation",
     "safe_einstein_correlation",
 ]
-
 
 T = TypeVar("T")
 
@@ -112,7 +112,7 @@ def safe_pearson_correlation(
     if cleaned:
         logger.debug("Removed %d non-finite entries", cleaned)
     x = x[mask]
-    y = y[mask]
+    y = y[mask]<
 
     if x.size < 2 or y.size < 2:
         logger.warning("Insufficient data for correlation; returning default")
