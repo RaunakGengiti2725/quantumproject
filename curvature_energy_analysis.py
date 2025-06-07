@@ -82,6 +82,7 @@ def timed(fn: Callable[..., T]) -> Callable[..., T]:
 
     return wrapper
 
+  
 @timed
 def safe_pearson_correlation(
     x: NDArray[np.floating], y: NDArray[np.floating]
@@ -99,6 +100,7 @@ def safe_pearson_correlation(
     Tuple[float, float]
         Correlation coefficient ``r`` and two-tailed p-value ``p``.
     """
+
     x = np.asarray(x, dtype=float).ravel()
     y = np.asarray(y, dtype=float).ravel()
     if x.shape != y.shape:
@@ -143,10 +145,12 @@ def safe_einstein_correlation(
 ) -> float:
     """Return correlation coefficient using Einstein summation.
 
+
     This function mirrors :func:`safe_pearson_correlation` but computes the
     covariance and correlation coefficient via ``np.einsum``. Only the
     correlation ``r`` is returned.
     """
+
 
     x = np.asarray(x, dtype=float).ravel()
     y = np.asarray(y, dtype=float).ravel()
@@ -159,6 +163,7 @@ def safe_einstein_correlation(
         logger.debug("Removed %d non-finite entries", cleaned)
     x = x[mask]
     y = y[mask]
+
 
     if x.size < 2 or np.allclose(x, x[0]) or np.allclose(y, y[0]):
         logger.warning("Insufficient data for correlation; returning default")
@@ -240,7 +245,12 @@ if __name__ == "__main__":  # pragma: no cover
     parser.add_argument(
         "--nodes", type=int, default=1_000_000, help="Number of nodes in the random graph"
     )
-    parser.add_argument("--p", type=float, default=1e-6, help="Edge probability")
+    parser.add_argument(
+        "--p",
+        type=float,
+        default=1e-6,
+        help="Edge probability"
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(message)s")
@@ -260,6 +270,7 @@ if __name__ == "__main__":  # pragma: no cover
 
     start = time.time()
     dE = compute_energy_deltas(g)
+
     timings["energy"] = time.time() - start
 
     start = time.time()
