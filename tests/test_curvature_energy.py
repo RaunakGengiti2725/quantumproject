@@ -10,6 +10,7 @@ from curvature_energy_analysis import (
 import networkx as nx  # type: ignore
 
 
+
 def test_safe_pearson_matches_scipy():
     rng = np.random.default_rng(0)
     x = rng.normal(size=100)
@@ -52,7 +53,6 @@ def test_compute_functions_shapes():
     assert kappa.shape == (4,)
     assert dE.shape == (4,)
 
-
 def test_backend_consistency():
     x = np.arange(5, dtype=float)
     y = np.arange(5, dtype=float)
@@ -72,3 +72,4 @@ def test_backend_consistency():
             assert np.allclose(r_e_jax, r_e)
     except Exception:
         pass
+

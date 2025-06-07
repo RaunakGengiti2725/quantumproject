@@ -6,11 +6,13 @@ JAX backends when available and logs timing information for each public
 function.
 """
 
+
 from __future__ import annotations
 
 import argparse
 import logging
 import time
+
 from typing import Callable, Tuple, TypeVar
 from functools import wraps
 
@@ -20,6 +22,7 @@ from scipy import stats  # type: ignore
 
 try:
     from numba import jit  # type: ignore
+
 
     def _jit(nopython=True):
         return jit(nopython=nopython)
@@ -80,6 +83,7 @@ def timed(fn: F) -> F:
 def safe_pearson_correlation(
     x: np.ndarray, y: np.ndarray
 ) -> Tuple[float, float]:
+
     """Return Pearson correlation of ``x`` and ``y`` with robust handling.
 
     Parameters
@@ -119,9 +123,11 @@ def safe_pearson_correlation(
             raise ValueError("nan result")
         return float(r), float(p)
     except Exception as exc:  # pragma: no cover - rarely executed
+
         logger.warning(
             "SciPy pearsonr failed (%s); falling back to numpy", exc
         )
+
         xm = x - x.mean()
         ym = y - y.mean()
         r_num = np.dot(xm, ym)
@@ -136,7 +142,6 @@ def safe_pearson_correlation(
         else:
             p = 1.0
         return float(r), float(p)
-
 
 @timed
 def safe_einstein_correlation(x: np.ndarray, y: np.ndarray) -> float:
@@ -174,6 +179,7 @@ def safe_einstein_correlation(x: np.ndarray, y: np.ndarray) -> float:
 def compute_curvature(graph: nx.Graph) -> np.ndarray:
     r"""Vectorized toy curvature estimate for each node.
 
+
     Uses a simple combinatorial expression based on node degrees:
 
     .. math:: k_i = 1 - \frac{d_i}{2} + \sum_{j \in N(i)} \frac{1}{d_j}
@@ -190,9 +196,11 @@ def compute_curvature(graph: nx.Graph) -> np.ndarray:
     """
 
     nodelist = list(graph.nodes())
+
     A = nx.to_scipy_sparse_array(
         graph, nodelist=nodelist, weight=None, format="csr", dtype=float
     )
+
     deg = np.asarray(A.sum(axis=1)).ravel()
     inv_deg = np.divide(1.0, deg, out=np.zeros_like(deg), where=deg != 0)
     neighbor_sum = A.dot(inv_deg)
@@ -201,12 +209,14 @@ def compute_curvature(graph: nx.Graph) -> np.ndarray:
 
 
 @_jit(nopython=True)
+
 def _aggregate_energy(
     edges_u: np.ndarray,
     edges_v: np.ndarray,
     deltas: np.ndarray,
     out: np.ndarray,
 ) -> None:
+
     for i in range(edges_u.shape[0]):
         u = edges_u[i]
         v = edges_v[i]
@@ -215,10 +225,12 @@ def _aggregate_energy(
         out[v] += d
 
 
+
 @timed
 def compute_energy_deltas(
     graph: nx.Graph, *, attr: str = "delta_energy"
 ) -> np.ndarray:
+
     """Aggregate energy deltas for each node.
 
     Parameters
@@ -226,8 +238,10 @@ def compute_energy_deltas(
     graph : nx.Graph
         Graph with per-edge ``attr`` values representing energy change.
     attr : str, optional
+
         Edge attribute storing the energy delta.
         Defaults to ``"delta_energy"``.
+
 
     Returns
     -------
@@ -249,6 +263,7 @@ def compute_energy_deltas(
     out = np.zeros(len(nodelist), dtype=np.float64)
     _aggregate_energy(u_idx, v_idx, delta, out)
     return out
+
 
 
 if JAX_AVAILABLE:
@@ -277,6 +292,7 @@ if __name__ == "__main__":  # pragma: no cover
     parser.add_argument(
         "--p", type=float, default=1e-6, help="Edge probability"
     )
+
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(message)s")
@@ -284,6 +300,7 @@ if __name__ == "__main__":  # pragma: no cover
     start = time.time()
     g = nx.fast_gnp_random_graph(args.nodes, args.p, seed=42)
     logger.info("Graph generated in %.2f s", time.time() - start)
+
 
     timings = {}
 
@@ -310,3 +327,4 @@ if __name__ == "__main__":  # pragma: no cover
     print("|---|---|")
     for k, v in timings.items():
         print(f"| {k} | {v:.4f} |")
+
