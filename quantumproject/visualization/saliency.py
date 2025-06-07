@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import os
-import torch
+
 import matplotlib.pyplot as plt
+import torch
 
 
-def saliency_heatmap(model: torch.nn.Module, ent: torch.Tensor, outdir: str = "figures/phase4"):
+def saliency_heatmap(
+    model: torch.nn.Module, ent: torch.Tensor, outdir: str = "figures/phase4"
+):
     """Compute gradient |d output / d input| and plot as heatmap."""
     ent = ent.clone().detach().requires_grad_(True)
-    preds = model(ent)
+    model(ent)
     grad = torch.autograd.functional.jacobian(lambda x: model(x), ent)
     sal = grad.abs().detach().cpu().numpy()
     plt.figure(figsize=(6, 4))

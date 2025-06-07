@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import numpy as np
 from typing import Iterable
+
+import numpy as np
 
 
 def avg_pairwise_distance(dist: np.ndarray) -> float:
@@ -20,5 +21,5 @@ def fit_dimension(system_sizes: Iterable[int], avg_dists: Iterable[float]) -> fl
     log_d = np.log(dists)
     slope, _ = np.polyfit(log_n, log_d, 1)
     if slope == 0:
-        return float('inf')
+        return float("inf")
     return float(1.0 / slope)
