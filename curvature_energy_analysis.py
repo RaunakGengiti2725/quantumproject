@@ -217,6 +217,7 @@ def _aggregate_energy(
     deltas: NDArray[np.floating],
     out: NDArray[np.floating],
 ) -> None:
+    
     for i in range(edges_u.shape[0]):
         u = edges_u[i]
         v = edges_v[i]
