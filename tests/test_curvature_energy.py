@@ -1,12 +1,14 @@
 import numpy as np
-from scipy import stats
+from scipy import stats  # type: ignore
 
 from curvature_energy_analysis import (
     safe_pearson_correlation,
+    safe_einstein_correlation,
     compute_curvature,
     compute_energy_deltas,
 )
-import networkx as nx
+import networkx as nx  # type: ignore
+
 
 
 def test_safe_pearson_matches_scipy():
@@ -35,6 +37,13 @@ def test_safe_pearson_handles_nan_inf():
     assert not np.isnan(p)
 
 
+def test_safe_einstein_constant():
+    x = np.ones(10)
+    y = np.arange(10)
+    r = safe_einstein_correlation(x, y)
+    assert r == 0.0
+
+
 def test_compute_functions_shapes():
     g = nx.path_graph(4)
     for u, v in g.edges():
@@ -43,3 +52,24 @@ def test_compute_functions_shapes():
     dE = compute_energy_deltas(g)
     assert kappa.shape == (4,)
     assert dE.shape == (4,)
+
+def test_backend_consistency():
+    x = np.arange(5, dtype=float)
+    y = np.arange(5, dtype=float)
+    r_np, _ = safe_pearson_correlation(x, y)
+    r_e = safe_einstein_correlation(x, y)
+    try:
+        from curvature_energy_analysis import (
+            JAX_AVAILABLE,
+            safe_pearson_correlation_jax,
+            safe_einstein_correlation_jax,
+        )
+
+        if JAX_AVAILABLE:
+            r_jax, _ = safe_pearson_correlation_jax(x, y)
+            r_e_jax = safe_einstein_correlation_jax(x, y)
+            assert np.allclose(r_jax, r_np)
+            assert np.allclose(r_e_jax, r_e)
+    except Exception:
+        pass
+

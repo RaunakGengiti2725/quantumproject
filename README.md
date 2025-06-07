@@ -61,6 +61,9 @@ from curvature_energy_analysis import (
     compute_curvature,
     compute_energy_deltas,
     safe_pearson_correlation,
+
+    safe_einstein_correlation,
+
 )
 ```
 - `compute_curvature(graph)` – return per-node scalar curvature as a NumPy array.
@@ -68,11 +71,21 @@ from curvature_energy_analysis import (
   touching each node.
 - `safe_pearson_correlation(x, y)` – correlation with cleaning and robust
   fallback returning `(r, p)`.
+- `safe_einstein_correlation(x, y)` – fast einsum-based correlation returning
+  only `r`.
+
 
 ### Example
 ```python
 import networkx as nx
-from curvature_energy_analysis import compute_curvature, compute_energy_deltas, safe_pearson_correlation
+
+from curvature_energy_analysis import (
+    compute_curvature,
+    compute_energy_deltas,
+    safe_pearson_correlation,
+    safe_einstein_correlation,
+)
+
 
 g = nx.path_graph(8)
 for u, v in g.edges():
@@ -80,7 +93,10 @@ for u, v in g.edges():
 curv = compute_curvature(g)
 delta = compute_energy_deltas(g)
 r, p = safe_pearson_correlation(curv, delta)
-print(r, p)
+
+r_e = safe_einstein_correlation(curv, delta)
+print(r, p, r_e)
+
 ```
 
 ### Benchmark
@@ -89,5 +105,7 @@ Run the built-in benchmark on a synthetic graph:
 python curvature_energy_analysis.py --nodes 100000 --p 1e-5
 ```
 The script reports timings for curvature computation, energy aggregation, and
-correlation evaluation. On a modern workstation the analysis on a 100k-node
-graph finishes in a few seconds.
+correlation evaluation. It prints a small Markdown table summarizing the timing
+for each step. On a modern workstation the analysis on a 100k-node graph
+finishes in a few seconds.
+
