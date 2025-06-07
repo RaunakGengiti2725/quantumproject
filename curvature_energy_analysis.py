@@ -9,7 +9,7 @@ from typing import Tuple
 
 import numpy as np
 import networkx as nx
-from scipy import sparse, stats
+from scipy import stats
 
 try:
     from numba import jit
@@ -22,55 +22,37 @@ except Exception:  # pragma: no cover - numba not installed
     def _jit(nopython=True):
         def wrapper(fn):
             return fn
-
         return wrapper
 
     NUMBA_AVAILABLE = False
-
 
 logger = logging.getLogger(__name__)
 
 
 def safe_pearson_correlation(x: np.ndarray, y: np.ndarray) -> Tuple[float, float]:
-    """Return Pearson correlation of ``x`` and ``y`` with robust handling.
-
-    Parameters
-    ----------
-    x, y : np.ndarray
-        Input arrays of equal length.
-
-    Returns
-    -------
-    Tuple[float, float]
-        Correlation coefficient ``r`` and two-tailed p-value ``p``.
-    """
-
+    """Return Pearson correlation of ``x`` and ``y`` with robust handling."""
     x = np.asarray(x, dtype=float).ravel()
     y = np.asarray(y, dtype=float).ravel()
     if x.shape != y.shape:
         raise ValueError("Input arrays must have the same shape")
-
     mask = np.isfinite(x) & np.isfinite(y)
     cleaned = np.count_nonzero(~mask)
     if cleaned:
         logger.debug("Removed %d non-finite entries", cleaned)
     x = x[mask]
     y = y[mask]
-
     if x.size < 2 or y.size < 2:
         logger.warning("Insufficient data for correlation; returning default")
         return 0.0, 1.0
-
     if np.allclose(x, x[0]) or np.allclose(y, y[0]):
         logger.warning("Zero variance detected; returning default")
         return 0.0, 1.0
-
     try:
         r, p = stats.pearsonr(x, y)
         if np.isnan(r) or np.isnan(p):
             raise ValueError("nan result")
         return float(r), float(p)
-    except Exception as exc:  # pragma: no cover - rarely executed
+    except Exception as exc:  # pragma: no cover
         logger.warning("SciPy pearsonr failed (%s); falling back to numpy", exc)
         xm = x - x.mean()
         ym = y - y.mean()
@@ -88,35 +70,10 @@ def safe_pearson_correlation(x: np.ndarray, y: np.ndarray) -> Tuple[float, float
         return float(r), float(p)
 
 
-def compute_curvature(graph: nx.Graph) -> np.ndarray:
-    """Vectorized toy curvature estimate for each node.
-
-    Uses a simple combinatorial expression based on node degrees:
-
-    .. math:: k_i = 1 - \frac{d_i}{2} + \sum_{j \in N(i)} \frac{1}{d_j}
-
-    Parameters
-    ----------
-    graph : nx.Graph
-        Input undirected graph.
-
-    Returns
-    -------
-    np.ndarray
-        Array of curvatures ordered by ``graph.nodes()``.
-    """
-
-    nodelist = list(graph.nodes())
-    A = nx.to_scipy_sparse_array(graph, nodelist=nodelist, weight=None, format="csr", dtype=float)
-    deg = np.asarray(A.sum(axis=1)).ravel()
-    inv_deg = np.divide(1.0, deg, out=np.zeros_like(deg), where=deg != 0)
-    neighbor_sum = A.dot(inv_deg)
-    curvature = 1.0 - deg / 2.0 + neighbor_sum
-    return curvature
-
-
 @_jit(nopython=True)
-def _aggregate_energy(edges_u: np.ndarray, edges_v: np.ndarray, deltas: np.ndarray, out: np.ndarray) -> None:
+def _aggregate_energy(
+    edges_u: np.ndarray, edges_v: np.ndarray, deltas: np.ndarray, out: np.ndarray
+) -> None:
     for i in range(edges_u.shape[0]):
         u = edges_u[i]
         v = edges_v[i]
@@ -125,22 +82,20 @@ def _aggregate_energy(edges_u: np.ndarray, edges_v: np.ndarray, deltas: np.ndarr
         out[v] += d
 
 
+def compute_curvature(graph: nx.Graph) -> np.ndarray:
+    """Vectorized toy curvature estimate for each node."""
+    nodelist = list(graph.nodes())
+    A = nx.to_scipy_sparse_array(
+        graph, nodelist=nodelist, weight=None, format="csr", dtype=float
+    )
+    deg = np.asarray(A.sum(axis=1)).ravel()
+    inv_deg = np.divide(1.0, deg, out=np.zeros_like(deg), where=deg != 0)
+    neighbor_sum = A.dot(inv_deg)
+    return 1.0 - deg / 2.0 + neighbor_sum
+
+
 def compute_energy_deltas(graph: nx.Graph, *, attr: str = "delta_energy") -> np.ndarray:
-    """Aggregate energy deltas for each node.
-
-    Parameters
-    ----------
-    graph : nx.Graph
-        Graph with per-edge ``attr`` values representing energy change.
-    attr : str, optional
-        Edge attribute storing the energy delta. Defaults to ``"delta_energy"``.
-
-    Returns
-    -------
-    np.ndarray
-        Sum of energy deltas incident to each node.
-    """
-
+    """Aggregate energy deltas for each node."""
     nodelist = list(graph.nodes())
     index = {n: i for i, n in enumerate(nodelist)}
     edges = list(graph.edges(data=True))
@@ -158,8 +113,15 @@ def compute_energy_deltas(graph: nx.Graph, *, attr: str = "delta_energy") -> np.
 
 
 if __name__ == "__main__":  # pragma: no cover
-    parser = argparse.ArgumentParser(description="Benchmark curvature-energy analysis")
-    parser.add_argument("--nodes", type=int, default=1_000_000, help="Number of nodes in the random graph")
+    parser = argparse.ArgumentParser(
+        description="Benchmark curvature-energy analysis"
+    )
+    parser.add_argument(
+        "--nodes",
+        type=int,
+        default=1_000_000,
+        help="Number of nodes in the random graph",
+    )
     parser.add_argument("--p", type=float, default=1e-6, help="Edge probability")
     args = parser.parse_args()
 
