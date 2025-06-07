@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-import numpy as np
 from typing import Iterable
+
+import numpy as np
 
 from quantumproject.utils.tree import BulkTree
 
 
-def reconstruct_entropies(tree: BulkTree, weights: Iterable[float], intervals: Iterable[tuple[int, ...]]):
+def reconstruct_entropies(
+    tree: BulkTree, weights: Iterable[float], intervals: Iterable[tuple[int, ...]]
+):
     """Approximate entropies via min-cut sums of edge weights."""
     weights = np.asarray(weights)
     ent = []
@@ -20,8 +23,11 @@ def reconstruct_entropies(tree: BulkTree, weights: Iterable[float], intervals: I
 
 def compare_entropies(true_ent: np.ndarray, recon_ent: np.ndarray) -> dict[str, float]:
     diff = true_ent - recon_ent
-    rmse = float(np.sqrt(np.mean(diff ** 2)))
-    cos_sim = float(np.dot(true_ent, recon_ent) / (np.linalg.norm(true_ent) * np.linalg.norm(recon_ent) + 1e-12))
+    rmse = float(np.sqrt(np.mean(diff**2)))
+    cos_sim = float(
+        np.dot(true_ent, recon_ent)
+        / (np.linalg.norm(true_ent) * np.linalg.norm(recon_ent) + 1e-12)
+    )
 
     if np.std(true_ent) > 1e-8 and np.std(recon_ent) > 1e-8:
         corr = float(np.corrcoef(true_ent, recon_ent)[0, 1])

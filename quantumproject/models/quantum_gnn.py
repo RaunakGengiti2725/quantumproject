@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import torch
 import pennylane as qml
-import pennylane.numpy as pnp
+import torch
 
 
 class HybridQuantumGNN(torch.nn.Module):
